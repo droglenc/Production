@@ -1,0 +1,59 @@
+---
+title: "Production Workflow"
+author: "Derek H. Ogle"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Data Preparations
+## General (from Original Files)
+1. Load files in 'data/original/', prep as described in `Data_Prepper.R`, and output prepped files to 'data/prepped/'. Once properly prepped with the final original data, `Data_Prepper'R` should not need to be run again. A simple log of each run of `Data_Prepper.R` is saved in 'data/prepped/dataPrepper_logs/'. These logs should be carefully examined each time new prepped files are made to compare processes to see if anything obviously went awry.
+
+## Computing All Weight-Length Regressions
+1. Loaded prepped `len_wt.csv` file.
+1. Computed all regresions and extracted coefficients (loga and b), sample size (n), coefficient of determination ($r^2$), and range of lengths by
+    a. Each WBIC_YEAR.
+    a. Each WBIC.
+    a. Each lake class.
+    a. All fish regardless of any classification.
+1. Combined all regressions into a single data.frame.
+1. Created a `use` variable that is set to `yes` if the regression is "valid" to use and `NO` if it is not valid to use. A regression was considered valid to use if it met the following criteria (see code in `calcLWRegs.R` for specific criteria).
+    a. Sample size was above some minimum threshold.
+    a. $r^2$ was above some minimum threshold.
+    a. b was between 2 and 4 ([Froese (2006)](http://www.fishbase.de/rfroese/LWR_jai_805.pdf) showed empirically that most MEAN (by species) values of b were between 2.5 and 3.5. Individual values would likely be a little wider; thus, the value set here.)
+    a. **QUESTION** -- Do we want to include a criterion based on the range of lengths in the regression. There are a handful of regressions with a fairly small range of values (~8 regression, of those remaining after above, with a range less than 200 mm).
+1. Output this data.frame to 'data/prepped/' as `LWRegs.csv` so that this work would not have to be run each time and so that the weight-length regressions used could be more easily observed.
+
+## Computing All Age-Length Keys
+
+
+
+\newpage
+
+1. Age-Length Key
+    1. Use WBIC_YEAR ALK
+    1. If not, then use WBIC ALK
+    1. If not, then use regional ALK (east and west in ceded territory)
+    1. Do not worry about sex at this point
+    1. Come up with some sort of cutoff for what will be considered a useful ALK (something like less than 30 ... but come up with a rationale for the 30 ... try doing we expect this many per 0.5 inch category times this many possible categories on average).
+    1. Decide whether to use modeled (multinomial) or completely empirical ALK. [LIKELY THE WAY TO GO]
+    1. After this reduce to just age-3 fish.
+    
+1. Weight-Length Regression
+    1. Use WBIC_YEAR W-L
+    1. If not, then use WBIC W-L
+    1. If not, then use regional W-L (east and west in ceded territory)
+    1. Do not worry about sex at this point
+    1. Cutoff may be something like reasonable sample size across reasonable range of lengths with a certain r^2 value.
+    1. Estimate a weight for each length in the fmdb fish.
+
+    
+    
+## Follow-Up
+
+- Analysis
+- Kobe Plots
+
