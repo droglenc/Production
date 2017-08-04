@@ -14,9 +14,10 @@
 
 # However, as a safeguard, the files will only be overwritten if the
 # writePreppedFiles object below is set to TRUE. If writePreppedFiles=
-# TRUE, then a log will be written in the prepped files folder. The log
-# should be carefully compared to old logs to determine if changes
-# caused any major issues (too few variables, too few records, etc.)
+# TRUE, then a log will be written in the prepped files folder. A
+# message will be printed at the end of the script that indicates if the
+# log has changed from the immediately previous version. If there are 
+# changes you should assure yourself that that was expected.
 #
 # ======================================================================
 # ######################################################################
@@ -222,13 +223,13 @@ min.len.age3 <- lencat(min(la$len.in[la$age==3],na.rm=TRUE),w=0.5)
 # ======================================================================
 # Read and prep the FMDB data file
 ## Selected only needed columns, renamed those columns
-fmdb <- read.csv("data/original/walleye_raw_2012.csv",
+fmdb <- read.csv("data/original/walleye_raw_updated_8_4_17.csv",
                  stringsAsFactors=FALSE,na.strings=c("-","NA",""))
 log <- c(log,paste("Loaded walleye FMDB file with",ncol(fmdb),
                    "variables and",nrow(fmdb),"records."))
-fmdb %<>% select(WBIC,Survey.Year,Length.or.Lower.Length.IN,
-                 Length.Upper.IN,Number.of.Fish,Gender) %>%
-  rename(wbic=WBIC,year=Survey.Year,sex=Gender) %>%
+fmdb %<>% select(WBIC,SURVEY_YEAR,FISH_LENGTH_OR_LOWER_IN_AMT,
+                 FISH_LEN_UPPER_IN_AMT,FISH_COUNT_AMT,SEX_TYPE) %>%
+  rename(wbic=WBIC,year=SURVEY_YEAR,sex=SEX_TYPE) %>%
   mutate(wbic_year=paste(wbic,year,sep="_"))
 ## Reduced to only WBIC_YEARs for which we have a PE
 log <- c(log,paste("This file originally had",
@@ -239,16 +240,16 @@ log <- c(log,paste(length(unique(fmdb$wbic_year)),
 ## Handling database errors or issues (per AR e-mail 1-Aug-17)
 ## Don't use filterD() because it removes NAs which causes issues!!!!!
 ## Removed rows where a number of fish is given, but no lengths
-rows2delete <- which(fmdb$Number.of.Fish>0 & is.na(fmdb$Length.or.Lower.Length.IN))
+rows2delete <- which(fmdb$FISH_COUNT_AMT>0 & is.na(fmdb$FISH_LENGTH_OR_LOWER_IN_AMT))
 if (length(rows2delete)>0) fmdb <- fmdb[-rows2delete,]
 log <- c(log,paste("Deleted",length(rows2delete),"rows with fish but no length."))
 ## Removed rows with "lower" length greater than "upper" length
-rows2delete <- which(fmdb$Length.or.Lower.Length.IN>fmdb$Length.Upper.IN)
+rows2delete <- which(fmdb$FISH_LENGTH_OR_LOWER_IN_AMT>fmdb$FISH_LEN_UPPER_IN_AMT)
 if (length(rows2delete)>0) fmdb <- fmdb[-rows2delete,]
 log <- c(log,paste("Deleted",length(rows2delete),
                    "rows with lower length > upper length."))
 ### Removed rows with negative lengths
-rows2delete <- which(fmdb$Length.or.Lower.Length.IN<0 | fmdb$Length.Upper.IN<0)
+rows2delete <- which(fmdb$FISH_LENGTH_OR_LOWER_IN_AMT<0 | fmdb$FISH_LEN_UPPER_IN_AMT<0)
 if (length(rows2delete)>0) fmdb <- fmdb[-rows2delete,]
 log <- c(log,paste("Deleted",length(rows2delete),"rows with negative lengths."))
 ## Removed rows where a number of fish is given, but the lower length
@@ -258,20 +259,20 @@ log <- c(log,paste("Deleted",length(rows2delete),"rows with negative lengths."))
 ## and the rest were <6.9. Only the 12 would likely come close to
 ## affecting P calculations, but there is no way to assign realistic
 ## lengths to these fish (because will be between 0 and 12).
-rows2delete <- which(fmdb$Length.or.Lower.Length.IN==0 & 
-                       fmdb$Length.Upper.IN>0 & fmdb$Number.of.Fish>0)
+rows2delete <- which(fmdb$FISH_LENGTH_OR_LOWER_IN_AMT==0 & 
+                     fmdb$FISH_LEN_UPPER_IN_AMT>0 & fmdb$FISH_COUNT_AMT>0)
 if (length(rows2delete)>0) fmdb <- fmdb[-rows2delete,]
 log <- c(log,paste("Deleted",length(rows2delete),
                    "rows from the FMDB in a 'small fish' bin."))
 ## If no or zero numbers of fish but there are lengths then 
 ## assume there is one fish.
-fmdb$Number.of.Fish[is.na(fmdb$Number.of.Fish) & 
-                      !is.na(fmdb$Length.or.Lower.Length.IN)] <- 1
-fmdb$Number.of.Fish[fmdb$Number.of.Fish==0 & 
-                      !is.na(fmdb$Length.or.Lower.Length.IN)] <- 1
+fmdb$FISH_COUNT_AMT[is.na(fmdb$FISH_COUNT_AMT) & 
+                    !is.na(fmdb$FISH_LENGTH_OR_LOWER_IN_AMT)] <- 1
+fmdb$FISH_COUNT_AMT[fmdb$FISH_COUNT_AMT==0 & 
+                    !is.na(fmdb$FISH_LENGTH_OR_LOWER_IN_AMT)] <- 1
 ## Generated individual lengths for fish recorded in length bins
-tmp <- capture.output(fmdb %<>% expandCounts(~Number.of.Fish,
-                         ~Length.or.Lower.Length.IN+Length.Upper.IN,
+tmp <- capture.output(fmdb %<>% expandCounts(~FISH_COUNT_AMT,
+                         ~FISH_LENGTH_OR_LOWER_IN_AMT+FISH_LEN_UPPER_IN_AMT,
                          new.name="len.in"),type="message")
 log <- c(log,tmp[-5])
 ## Added a length in mm variable
@@ -302,8 +303,14 @@ if (writePreppedFiles) {
                      "variables and",nrow(fmdb),"records.\n\n"))
 }
 
+
+
+# ======================================================================
 # Write out log file
 logconn <- file(paste0("data/prepped/dataPrepper_logs/dataPrepperLog_",
                        format(Sys.time(),"%d%b%Y_%H%M"),".txt"))
 writeLines(log,logconn)
 close(logconn)
+
+# Compare with the most recent previous file
+source("code/compDataPrepperLogs.R")
