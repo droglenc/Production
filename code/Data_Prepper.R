@@ -45,6 +45,7 @@ set.seed(82340934)
 
 
 
+
 # ======================================================================
 # Read and prep the PE data file.
 ## Renamed variables (preference and consistency)
@@ -80,7 +81,6 @@ if (writePreppedFiles) {
   log <- c(log,paste("Saved prepped PE.csv with",ncol(PE),"variables and",
                    nrow(PE),"records.\n\n"))
 }
-rm(PE,tmp)
 
 
 
@@ -146,6 +146,79 @@ if (writePreppedFiles) {
 
 
 
+
+# ======================================================================
+# Read and prep the age-length-weight data file
+## Reduced to only WBICs for which we have a PE
+## Selected only needed columns, renamed those columns -- note that the
+##   Number.of.Fish was not selected because all 1s
+## Added length in mm and wbic-year combination variables
+## Converted weight to numeric (was character because of commas)
+## Rearranged columns and sorted rows by wbic, year, length, and age
+lwa <- read.csv("data/original/length_weight_age_raw_data_8_1_17.csv",
+                stringsAsFactors=FALSE,na.strings=c("-","NA",""))
+log <- c(log,paste("Loaded length_weight_age file with",
+                   ncol(lwa),"variables and",nrow(lwa),"records."))
+lwa %<>% select(WBIC,Survey.Year,Length.IN,Weight.Grams,
+                Age..observed.annuli.,Age.Structure.,Gender) %>%
+  rename(wbic=WBIC,year=Survey.Year,sex=Gender,
+         len.in=Length.IN,wt=Weight.Grams,
+         age=Age..observed.annuli.,strux=Age.Structure.) %>%
+  mutate(len.mm=len.in*25.4,
+         wt=as.numeric(gsub(',','',wt)),
+         wbic_year=paste(wbic,year,sep="_")) %>%
+  filterD(wbic_year %in% wbic_years) %>%
+  select(wbic_year,wbic,year,len.in,len.mm,wt,age,sex,strux) %>%
+  arrange(wbic,year,len.mm,age)
+## Join on the county and lake class variables
+##   Note that only 3 vars are kept in wbicInfo so that only county
+##     and class (and not mean_depth, etc.) will be added
+## Rearranged columns
+lwa <- plyr::join(lwa,wbicInfo[,c("wbic","county","class")],by="wbic") %>%
+  select(wbic_year,wbic,year,county,class,len.in,len.mm,wt,age,sex,strux)
+# Isolate those fish that have both length and weight
+## Remove age and strux variables
+lw <- filterD(lwa,!is.na(len.mm),!is.na(wt)) %>%
+  select(-age,-strux)
+log <- c(log,paste(nrow(lw),"fish had lengths and weights."))
+## Removed fish for which the weight variable was =0
+rows2delete <- which(lw$wt==0)
+if (length(rows2delete)>0) lw <- lw[-rows2delete,]
+log <- c(log,paste("Deleted",length(rows2delete),"rows with weights of zero."))
+## Removed fish for which the len.in variable was <1
+rows2delete <- which(lw$len.in<1)
+if (length(rows2delete)>0) lw <- lw[-rows2delete,]
+log <- c(log,paste("Deleted",length(rows2delete),"rows with a length (in) < 1."))
+## Removed fish for which the wt (in grams) variable was <1
+rows2delete <- which(lw$wt<1)
+if (length(rows2delete)>0) lw <- lw[-rows2delete,]
+log <- c(log,paste("Deleted",length(rows2delete),"rows with a weight (g) < 1."))
+## Write out the file ... len_wt.csv
+if (writePreppedFiles) {
+  write.csv(lw,"data/prepped/len_wt.csv",row.names=FALSE)
+  log <- c(log,paste("Saved prepped len_wt.csv with",ncol(lw),
+                     "variables and",nrow(lw),"records.\n"))
+}
+
+# Isolate those fish that have both length and age
+## Remove wt variable
+la <- filterD(lwa,!is.na(len.mm),!is.na(age)) %>% select(-wt)
+log <- c(log,paste(nrow(la),"fish had lengths and ages."))
+## Remove fish with age>3 and len.in<5
+rows2delete <- which(la$age>3 & la$len.in<5)
+if (length(rows2delete)>0) la <- la[-rows2delete,]
+log <- c(log,paste("Deleted",length(rows2delete),"rows with age>3 and len.in<5."))
+## Write out the file ... len_age.csv
+if (writePreppedFiles) {
+  write.csv(la,"data/prepped/len_age.csv",row.names=FALSE)
+  log <- c(log,paste("Saved prepped len_age.csv with",ncol(la),
+                     "variables and",nrow(la),"records.\n\n"))
+}
+
+## Find smallest age-3 fish ... used to limit FMDB below
+## round down to nearest 0.5-in category
+min.len.age3 <- lencat(min(la$len.in[la$age==3],na.rm=TRUE),w=0.5)
+
 # ======================================================================
 # Read and prep the FMDB data file
 ## Selected only needed columns, renamed those columns
@@ -206,6 +279,14 @@ log <- c(log,tmp[-5])
 fmdb %<>% mutate(len.mm=len.in*25.4) %>%
   select(wbic_year,wbic,year,len.in,len.mm,sex,lennote) %>%
   arrange(wbic,year,len.mm)
+## Remove fish that are shorter than the minimum length of age-3 fish
+## We are ultimately going to limit the data to age-3 fish, so no need
+## to keep fish with lengths that will never become age 3.
+rows2delete <- which(fmdb$len.in<min.len.age3)
+if (length(rows2delete)>0) fmdb <- fmdb[-rows2delete,]
+log <- c(log,paste0("Deleted ",length(rows2delete),
+                    " rows with a len.in less than the minimum length of age-3 fish (",
+                    min.len.age3,")."))
 ## Join on the county and lake class variables
 ##   Note that only 3 vars are kept in wbicInfo so that only county
 ##     and class (and not mean_depth, etc.) will be added
@@ -220,77 +301,6 @@ if (writePreppedFiles) {
   log <- c(log,paste("Saved prepped fmdb_WAE.csv with",ncol(fmdb),
                      "variables and",nrow(fmdb),"records.\n\n"))
 }
-rm(fmdb,rows2delete,tmp)
-
-
-
-
-# ======================================================================
-# Read and prep the age-length-weight data file
-## Reduced to only WBICs for which we have a PE
-## Selected only needed columns, renamed those columns -- note that the
-##   Number.of.Fish was not selected because all 1s
-## Added length in mm and wbic-year combination variables
-## Converted weight to numeric (was character because of commas)
-## Rearranged columns and sorted rows by wbic, year, length, and age
-lwa <- read.csv("data/original/length_weight_age_raw_data_8_1_17.csv",
-                stringsAsFactors=FALSE,na.strings=c("-","NA",""))
-log <- c(log,paste("Loaded length_weight_age file with",
-                   ncol(lwa),"variables and",nrow(lwa),"records."))
-lwa %<>% select(WBIC,Survey.Year,Length.IN,Weight.Grams,
-                Age..observed.annuli.,Age.Structure.,Gender) %>%
-  rename(wbic=WBIC,year=Survey.Year,sex=Gender,
-         len.in=Length.IN,wt=Weight.Grams,
-         age=Age..observed.annuli.,strux=Age.Structure.) %>%
-  mutate(len.mm=len.in*25.4,
-         wt=as.numeric(gsub(',','',wt)),
-         wbic_year=paste(wbic,year,sep="_")) %>%
-  filterD(wbic_year %in% wbic_years) %>%
-  select(wbic_year,wbic,year,len.in,len.mm,wt,age,sex,strux) %>%
-  arrange(wbic,year,len.mm,age)
-## Join on the county and lake class variables
-##   Note that only 3 vars are kept in wbicInfo so that only county
-##     and class (and not mean_depth, etc.) will be added
-## Rearranged columns
-lwa <- plyr::join(lwa,wbicInfo[,c("wbic","county","class")],by="wbic") %>%
-  select(wbic_year,wbic,year,county,class,len.in,len.mm,wt,age,sex,strux)
-# Isolate those fish that have both length and weight
-## Remove age and strux variables
-lw <- filterD(lwa,!is.na(len.mm),!is.na(wt)) %>%
-  select(-age,-strux)
-log <- c(log,paste(nrow(lw),"fish had lengths and weights."))
-## Removed fish for which the weight variable was =0
-rows2delete <- which(lw$wt==0)
-if (length(rows2delete)>0) lw <- lw[-rows2delete,]
-log <- c(log,paste("Deleted",length(rows2delete),"rows with weights of zero."))
-## Removed fish for which the len.in variable was <1
-rows2delete <- which(lw$len.in<1)
-if (length(rows2delete)>0) lw <- lw[-rows2delete,]
-log <- c(log,paste("Deleted",length(rows2delete),"rows with a length (in) < 1."))
-## Removed fish for which the wt (in grams) variable was <1
-rows2delete <- which(lw$wt<1)
-if (length(rows2delete)>0) lw <- lw[-rows2delete,]
-log <- c(log,paste("Deleted",length(rows2delete),"rows with a weight (g) < 1."))
-## Write out the file ... len_wt.csv
-if (writePreppedFiles) {
-  write.csv(lw,"data/prepped/len_wt.csv",row.names=FALSE)
-  log <- c(log,paste("Saved prepped len_wt.csv with",ncol(lw),
-                     "variables and",nrow(lw),"records.\n"))
-}
-
-# Isolate those fish that have both length and age
-## Remove wt variable
-la <- filterD(lwa,!is.na(len.mm),!is.na(age)) %>%
-  select(-wt)
-log <- c(log,paste(nrow(la),"fish had lengths and ages."))
-## Write out the file ... len_age.csv
-if (writePreppedFiles) {
-  write.csv(la,"data/prepped/len_age.csv",row.names=FALSE)
-  log <- c(log,paste("Saved prepped len_age.csv with",ncol(la),
-                     "variables and",nrow(la),"records.\n\n"))
-}
-rm(lwa,lw,la)
-rm(wbicInfo,wbicInfo2,wbic_years,wbics)
 
 # Write out log file
 logconn <- file(paste0("data/prepped/dataPrepper_logs/dataPrepperLog_",
