@@ -1,6 +1,17 @@
 # ######################################################################
 # ======================================================================
-# These scripts 
+# This script computes weight-length regressions by WBIC_YEAR, WBIC,
+# lake classification, and overall (no grouping) and writes a file with
+# the regression coefficients and other regression information. This 
+# script need not be run again unless the underlying weight-length data
+# are modified. The file created will be used to predict weights from
+# lengths for fish that were not weighed.
+#
+# THIS SCRIPT SHOULD NOT NEED TO BE RUN AGAIN AS IT WILL OVERWRITE
+# THE PREPPED FILE IN 'data/prepped/'.
+
+# However, as a safeguard, the file will only be overwritten if the
+# writePreppedFiles object below is set to TRUE.
 #
 # ======================================================================
 # ######################################################################
@@ -17,6 +28,8 @@ library(FSA)
 library(dplyr)
 library(magrittr)
 library(nlme)
+## Set whether old prepped files should be over-written (see above)
+writePreppedFiles <- FALSE
 ## A new function to extract some information from the lists returned
 ## by lmList that contains each length-weight regression by group
 LWINFO <- function(lms,type) {
@@ -97,7 +110,8 @@ headtail(lw_res)
 
 # ======================================================================
 # Output results to a file in data/prepped/
-write.csv(lw_res,"data/prepped/LWregs.csv",quote=FALSE,row.names=FALSE)
+if (writePreppedFiles) write.csv(lw_res,"data/prepped/LWregs.csv",
+                                 quote=FALSE,row.names=FALSE)
 
 # ======================================================================
 # Exploring the regression results
