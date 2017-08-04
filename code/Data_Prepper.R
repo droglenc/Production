@@ -9,8 +9,8 @@
 # The prepped files are read and their data further wrangled as 
 # appropriate for the larger analysis.
 #
-# THESE SCRIPTS SHOULD NOT NEED TO BE RUN AGAIN AS THEY WILL OVERWRITE
-# THE PREPPED FILES IN 'data/original/'.
+# THIS SCRIPT SHOULD NOT NEED TO BE RUN AGAIN AS IT WILL OVERWRITE
+# THE PREPPED FILES IN 'data/prepped/'.
 
 # However, as a safeguard, the files will only be overwritten if the
 # writePreppedFiles object below is set to TRUE. If writePreppedFiles=
@@ -67,7 +67,9 @@ log <- c(log,paste("Removing lake chains deleted",tmp-nrow(PE),
 # Found unique wbic and wbic_year codes in the PE file.
 ## We must have a PE to estimate P and B. Thus, these wbic codes can be
 ## used to filter down the other (ROW, FMDB, etc.) files so that we
-#  limit memory issues
+## limit memory issues. Note, however, that there are some WBIC_YEARs
+## in the PE file that are not in the FMDB file (per message from AR on
+## 3-Aug-17.) 
 wbics <- unique(PE$wbic)
 wbic_years <- unique(PE$wbic_year)
 log <- c(log,paste("There are",length(wbic_years),"unique WBIC_YEARS and",
@@ -147,7 +149,6 @@ if (writePreppedFiles) {
 # ======================================================================
 # Read and prep the FMDB data file
 ## Selected only needed columns, renamed those columns
-## Reduced to only WBIC_YEARs for which we have a PE
 fmdb <- read.csv("data/original/walleye_raw_2012.csv",
                  stringsAsFactors=FALSE,na.strings=c("-","NA",""))
 log <- c(log,paste("Loaded walleye FMDB file with",ncol(fmdb),
@@ -155,8 +156,13 @@ log <- c(log,paste("Loaded walleye FMDB file with",ncol(fmdb),
 fmdb %<>% select(WBIC,Survey.Year,Length.or.Lower.Length.IN,
                  Length.Upper.IN,Number.of.Fish,Gender) %>%
   rename(wbic=WBIC,year=Survey.Year,sex=Gender) %>%
-  mutate(wbic_year=paste(wbic,year,sep="_")) %>%
-  filterD(wbic_year %in% wbic_years)
+  mutate(wbic_year=paste(wbic,year,sep="_"))
+## Reduced to only WBIC_YEARs for which we have a PE
+log <- c(log,paste("This file originally had",
+                   length(unique(fmdb$wbic_year)),"WBIC_YEARs"))
+fmdb %<>% filterD(wbic_year %in% wbic_years)
+log <- c(log,paste(length(unique(fmdb$wbic_year)),
+         "WBIC_YEARs remained after matching with PEs."))
 ## Handling database errors or issues (per AR e-mail 1-Aug-17)
 ## Don't use filterD() because it removes NAs which causes issues!!!!!
 ## Removed rows where a number of fish is given, but no lengths
@@ -166,7 +172,8 @@ log <- c(log,paste("Deleted",length(rows2delete),"rows with fish but no length."
 ## Removed rows with "lower" length greater than "upper" length
 rows2delete <- which(fmdb$Length.or.Lower.Length.IN>fmdb$Length.Upper.IN)
 if (length(rows2delete)>0) fmdb <- fmdb[-rows2delete,]
-log <- c(log,paste("Deleted",length(rows2delete),"rows with lower length > upper length."))
+log <- c(log,paste("Deleted",length(rows2delete),
+                   "rows with lower length > upper length."))
 ### Removed rows with negative lengths
 rows2delete <- which(fmdb$Length.or.Lower.Length.IN<0 | fmdb$Length.Upper.IN<0)
 if (length(rows2delete)>0) fmdb <- fmdb[-rows2delete,]
@@ -205,7 +212,8 @@ fmdb %<>% mutate(len.mm=len.in*25.4) %>%
 ##   Note that plyr::join() must be used rather than dplyr::left_join()
 ##     because of memory issues with left_join()
 fmdb <- plyr::join(fmdb,wbicInfo[,c("wbic","county","class")],by="wbic")
-headtail(fmdb)
+log <- c(log,paste(length(unique(fmdb$wbic_year)),
+                   "WBIC_YEARs after all data prepping."))
 ## Write out the file ... fmdb_WAE.csv
 if (writePreppedFiles) {
   write.csv(fmdb,"data/prepped/fmdb_WAE.csv",row.names=FALSE)
@@ -267,7 +275,7 @@ log <- c(log,paste("Deleted",length(rows2delete),"rows with a weight (g) < 1."))
 if (writePreppedFiles) {
   write.csv(lw,"data/prepped/len_wt.csv",row.names=FALSE)
   log <- c(log,paste("Saved prepped len_wt.csv with",ncol(lw),
-                     "variables and",nrow(lw),"records."))
+                     "variables and",nrow(lw),"records.\n"))
 }
 
 # Isolate those fish that have both length and age
