@@ -1,5 +1,5 @@
 library(dplyr)
-source("code/calcPB.R")
+source("code/calcPB_function.R")
 
 ## CJFAS2 ... Tenderfoot Lake example ... data from Rypel's Excel Sheet1
 TLha <- 176.848
@@ -14,10 +14,10 @@ TLdf <- data.frame(age=3:12,
 TLdf <- mutate(TLdf,num=TLpe*ppop,twt=num*mwt)
 TLdf
 
-TLres <- calcPB(TLdf,area=TLha,age.c=1,num.c=4,twt.c=5)
+TLres <- calcPB(TLdf,area=TLha,age.c="age",num.c="num",twt.c="twt")
 TLres$df
-TLres$PperA
-TLres$BperA
+TLres$BperA  # 20.61249
+TLres$PperA  #  4.907816
 # Matches Rypel's Excel sheet exactly
 
 
@@ -30,11 +30,10 @@ ELdf <- data.frame(age=c(0,3:15,18),
                          120.6657629,194.1304121,45.71067112,12.83364195,
                          13.53191397,13.76769242,15.62439983))
 
-ELres <- calcPB(ELdf,area=ELha,age.c=1,num.c=2,twt.c=3,
-                div=c(NA,3,rep(1,nrow(ELdf)-3),3))
+ELres <- calcPB(ELdf,area=ELha,age.c="age",num.c="num",twt.c="twt")
 ELres$df
-ELres$PperA
-ELres$BperA
+ELres$BperA  # 27.00323
+ELres$PperA  #  6.07475
 # Matches Rypel's Excel sheet exactly
 
 
@@ -42,8 +41,7 @@ ELres$BperA
 # test names
 ELdf2 <- ELdf
 names(ELdf2) <- c("AGES","ABUNDANCE","BIOMASS")
-ELres2 <- calcPB(ELdf2,area=ELha,age.c=1,num.c=2,twt.c=3,
-                 div=c(NA,3,rep(1,nrow(ELdf2)-3),3))
+ELres2 <- calcPB(ELdf2,area=ELha,age.c="AGES",num.c="ABUNDANCE",twt.c="BIOMASS")
 ELres2$df
 
 
