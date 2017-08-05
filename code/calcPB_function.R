@@ -52,8 +52,9 @@ calcPB <- function(df,age.c=1,num.c=2,twt.c=3,area=1,adjAgeGaps=TRUE) {
   # Put original column names back on data.frame
   names(df)[which(names(df) %in% c("age","num","twt"))] <- onames
   # Create return list
-  res <- list(df=df,B=sum(df$twt,na.rm=TRUE),P=sum(df$P,na.rm=TRUE))
+  res <- list(df=as.data.frame(df),
+              B=sum(df$twt,na.rm=TRUE),P=sum(df$P,na.rm=TRUE))
   res <- c(res,BperA=res$B/area,PperA=res$P/area,area=area)
-  class(res) <- "PB"
+  class(res) <- c("data.frame","PB")
   res
 }
