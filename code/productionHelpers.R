@@ -13,7 +13,7 @@ getPE <- function(df,PE,verbose=FALSE) {
   # Find corresponding PE value
   res <- PE$PE[PE$wbic_year==WBIC_YEAR]
   # Print message if asked to
-  message("The PE for WBIC_YEAR ",WBIC_YEAR," is ",res,".")
+  if (verbose) message("The PE for WBIC_YEAR ",WBIC_YEAR," is ",res,".")
   # return result
   res
 }
@@ -32,21 +32,21 @@ getSize <- function(df,WB,verbose=FALSE) {
   # Find corresponding lake size
   res <- WB$size[WB$wbic==WBIC]
   # Print message if asked to
-  message("The size of WBIC_YEAR ",WBIC," is ",res," ha.")
+  if (verbose) message("The size of WBIC_YEAR ",WBIC," is ",res," ha.")
   # return result
   res
 }
 
 
 
-#' Identifies and returns appropriate weight-length regression.
+#' Identifies appropriate weight-length regression and uses it to predict weight from length.
 #' 
-#' This function takes a data.frame of one WBIC_YEAR and identifies and returns the appropriate regression results. See workflow document for how "appropriate" is defined.
+#' This function takes a data.frame of one WBIC_YEAR, identifies the appropriate regression, predicts weight from length, and returns those predictions with some other information. See workflow document for how "appropriate" is defined.
 #' 
 #' @param df A data.frame filtered from the FMDB file for one WBIC_YEAR.
 #' @param LWRegs A data.frame of valid weight-length regressions filtered from the LWRegs file.
 #'  
-getLWReg <- function(df,LWRegs) {
+doLWReg <- function(df,LWRegs) {
   # Find WBIC,YEAR,WBIC_YEAR, and CLASS
   WBIC <- as.character(unique(df$wbic))
   YEAR <- as.character(unique(df$year))
@@ -57,8 +57,12 @@ getLWReg <- function(df,LWRegs) {
   else if (WBIC %in% LWRegs$which) row <- which(LWRegs$which==WBIC)
   else if (CLASS %in% LWRegs$which) row <- which(LWRegs$which==CLASS)
   else row <- which(LWRegs$which=="ALL")
-  # Return appropriate row
-  LWRegs[row,]
+  # Get appropriate regression
+  reg <- LWRegs[row,]
+  # Predict weights from lens with the regression results
+  df$wt <- reg$a*df$len.mm^reg$b
+  # return data (with new wts) and regression information
+  list(df=df,reg=reg)
 }
 
 
@@ -71,7 +75,7 @@ getLWReg <- function(df,LWRegs) {
 #' @param ALKInfo A data.frame of valid information about age-length keys filtered from the ALKInfo file.
 #' @param type A string that indicates whether to use "empirical" (observed) or "smoothed" (modeled) age=length keys.
 #'  
-getALK <- function(df,ALKInfo,type) {
+doALK <- function(df,ALKInfo,type) {
   # Find WBIC,YEAR,WBIC_YEAR, and CLASS
   WBIC <- as.character(unique(df$wbic))
   YEAR <- as.character(unique(df$year))
@@ -87,6 +91,30 @@ getALK <- function(df,ALKInfo,type) {
   ext <- ".RData"
   nm <- ifelse(type=="empirical",ALKInfo$ename[row],ALKInfo$sname[row])
   load(paste0(dir,nm,ext))
-  # Return a list that has the ALK and some other information
-  list(ALK=alk,which=ALKInfo$which[row],type=ALKInfo$type[row])
+  # Potentially remove fish that are less than the minimum length on the ALK
+  note <- ""
+  min.len.on.ALK <- min(as.numeric(rownames(alk)))
+  if (min(df$len.mm)<min.len.on.ALK) {
+    tmp <- nrow(df)
+    df <- filterD(df,len.mm>=min.len.on.ALK)
+    tmp <- tmp-nrow(df)
+    if (nrow(df)==0) note <- makeNote(note,paste0("Removing ",tmp," fish smaller than minimum length on ALK (",min.len.on.ALK,") resulted in no fish to age."))
+    else note <- makeNote(note,paste0("Removed ",tmp," fish smaller than minimum length on ALK (",min.len.on.ALK,")."))
+  }
+  # Apply that ALK to predict ages from lengths (if n>0)
+  if (nrow(df)>0) {
+    df <- alkIndivAge(alk,~len.mm,data=df)
+    df <- filterD(df,age>=3)
+    if (nrow(df)==0) note <- makeNote(note,"All fish were < age-3.")
+  }
+  # Return data.frame and ALK information
+  list(df=df,which=ALKInfo$which[row],type=ALKInfo$type[row],note=note)
+}
+
+
+
+makeNote <- function(note,addlnote) {
+  if (note=="") note <- addlnote
+  else note <- paste(note,addlnote)
+  note
 }
