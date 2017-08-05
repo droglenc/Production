@@ -10,11 +10,11 @@ knitr::opts_chunk$set(echo = TRUE)
 
 # Data Preparations
 ## General (from Original Files)
-1. Load files in 'data/original/', prep as described in `Data_Prepper.R`, and output prepped files to 'data/prepped/'. Once properly prepped with the final original data, `Data_Prepper'R` should not need to be run again. A simple log of each run of `Data_Prepper.R` is saved in 'data/prepped/dataPrepper_logs/'. These logs should be carefully examined each time new prepped files are made to compare processes to see if anything obviously went awry.
+1. Load files in 'data/original/', prep as described in `Data_Prepper.R`, and output prepped files to 'data/prepped/'. Once properly prepped, `Data_Prepper'R` should not need to be run again. A simple log of each run of `Data_Prepper.R` is saved in 'data/prepped/dataPrepper_logs/'. These logs should be carefully examined each time new prepped files are made to compare processes to see if anything obviously went awry.
 
-## Computing All Weight-Length Regressions
+## Computing All Weight-Length Regressions (in `calcLWRegs.R`)
 1. Loaded prepped `len_wt.csv` file.
-1. Computed all regresions and extracted coefficients (loga and b), sample size (n), coefficient of determination ($r^2$), and range of lengths by
+1. Computed regresions and extracted coefficients (loga and b), sample size (n), coefficient of determination ($r^2$), and range of lengths by
     a. Each WBIC_YEAR.
     a. Each WBIC.
     a. Each lake class.
@@ -27,33 +27,42 @@ knitr::opts_chunk$set(echo = TRUE)
     a. **QUESTION** -- Do we want to include a criterion based on the range of lengths in the regression. There are a handful of regressions with a fairly small range of values (~8 regression, of those remaining after above, with a range less than 200 mm).
 1. Output this data.frame to 'data/prepped/' as `LWRegs.csv` so that this work would not have to be run each time and so that the weight-length regressions used could be more easily observed.
 
-## Computing All Age-Length Keys
-
-
+## Computing All Age-Length Keys (in `calcALKs.R`)
+1. Loaded prepped `len_age.csv` file.
+1. Attempted to compute empirical and smoothed ALKs by
+    a. Each WBIC_YEAR.
+    a. Each WBIC.
+    a. Each lake class.
+    a. All fish regardless of any classification.
+1. Output each ALK to a ".RData" file that can be loaded later.
+    a. Note that smoothed ALKs could not be reliably computed when n less than 10 or number of ages present was less than 3. Additionally, in a small number of situations, the model did not converge.
+1. Created a `use` variable that is set to `yes` if the ALK is "valid" to use and `NO` if it is not valid to use. An ALK was considered valid to use if it met the following criteria.
+    1. Sample size was above some minimum threshold. **This is currently set at 30.**
+    1. The number of ages in the ALK was above some minimum threshold. **This is currently set at 5.**
+    1. The number of length categories in the ALK was above some minimum threshold. **This is currently set at 5 (i.e., using 20-mm length classes this ensure a range of at least 100 mm).**
+1. Output a data file (`ALKInfo.csv`) that contained information about each ALK.
+1. **QUESTION**
 
 \newpage
 
-1. Age-Length Key
-    1. Use WBIC_YEAR ALK
-    1. If not, then use WBIC ALK
-    1. If not, then use regional ALK (east and west in ceded territory)
-    1. Do not worry about sex at this point
-    1. Come up with some sort of cutoff for what will be considered a useful ALK (something like less than 30 ... but come up with a rationale for the 30 ... try doing we expect this many per 0.5 inch category times this many possible categories on average).
-    1. Decide whether to use modeled (multinomial) or completely empirical ALK. [LIKELY THE WAY TO GO]
-    1. After this reduce to just age-3 fish.
-    
-1. Weight-Length Regression
-    1. Use WBIC_YEAR W-L
-    1. If not, then use WBIC W-L
-    1. If not, then use regional W-L (east and west in ceded territory)
-    1. Do not worry about sex at this point
-    1. Cutoff may be something like reasonable sample size across reasonable range of lengths with a certain r^2 value.
-    1. Estimate a weight for each length in the fmdb fish.
-
-    
-    
-## Follow-Up
-
-- Analysis
-- Kobe Plots
-
+1. Loaded the prepped files
+    1. Loaded the prepped `wbic` file.
+    1. Loaded the prepped `fmdb` file.
+    1. Loaded the prepped `PE` file.
+        1. Removed WBIC_YEARs from the `PE` file that did not exist in the `fmdb` file (i.e., even if a PE existed, we can not calculate P without lengths to turn into weights and ages).
+    1. Loaded the `LWRegs` file.
+        1. Removed weight-length regressions that were not valid (see above).
+    1. Loaded the `ALKInfo` file.
+        1. Removed ALKs that were not valid (see above).
+    1. Looped through all remaining WBIC_YEARs in the `PE` file, computing P and B for each.
+        1. The weight-length regression used was the first of these that was considered valid: WBIC_YEAR, WBIC, lake classification, all fish (no classifications). **Note that weight was estimated for individual fish.**
+        1. The ALK used was the first of these that was considered valid: WBIC_YEAR, WBIC, lake classification, all fish (no classifications).
+        1. After age assignments, reduced to just age-3 fish.
+        1. Mean weight-at-age and number of fish sampled at age were summarized.
+        1. The number of fish in the population at each age was determined by the proportion of the sample at each age and the PE. **QUESTION: What should we do when the sample size exceeded the PE?**
+        1. These summaries were sent to `calcPB()` to compute P and B.
+        1. An intermediate table (like Tables 1 in Rypel et al. manuscripts) was printed to a CSV for each WBIC_YEAR for which a P could be calculated.
+    1. A summary table of P, B, other values (PE, n, number of ages, etc), and some notes was printed to a CSV file in the results folder following the loop.
+        1. Summary table included a `use` variable that is set to `yes` if the results met the following criterion for "validity"
+            1. Sample size was above some minimum threshold. Goto use a threshold of 30 here. **This is currently set at 30.**
+            1. The number of ages was above some minimum threshold. Goto used a threshold of 5 here. **This is currently set at 5.**
