@@ -21,8 +21,8 @@ knitr::opts_chunk$set(echo = TRUE)
     a. All fish regardless of any classification.
 1. Combined all regressions into a single data.frame.
 1. Created a `use` variable that is set to `yes` if the regression is "valid" to use and `NO` if it is not valid to use. A regression was considered valid to use if it met the following criteria (see code in `calcLWRegs.R` for specific criteria).
-    a. Sample size was above some minimum threshold.
-    a. $r^2$ was above some minimum threshold.
+    a. Sample size was above some minimum threshold. **This is currently set at 25.**
+    a. $r^2$ was above some minimum threshold. **This is currently set at 0.85.**
     a. b was between 2 and 4 ([Froese (2006)](http://www.fishbase.de/rfroese/LWR_jai_805.pdf) showed empirically that most MEAN (by species) values of b were between 2.5 and 3.5. Individual values would likely be a little wider; thus, the value set here.)
     a. **QUESTION** -- Do we want to include a criterion based on the range of lengths in the regression. There are a handful of regressions with a fairly small range of values (~8 regression, of those remaining after above, with a range less than 200 mm).
 1. Output this data.frame to 'data/prepped/' as `LWRegs.csv` so that this work would not have to be run each time and so that the weight-length regressions used could be more easily observed.
