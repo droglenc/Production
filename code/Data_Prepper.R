@@ -338,6 +338,6 @@ if (writePreppedFiles) {
   close(logconn)
 
   # Compare with the most recent previous file
-  source("code/compDataPrepperLogs.R")
+  source("data/prepped/dataPrepper_logs/compDataPrepperLogs.R")
 }
 
