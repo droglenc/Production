@@ -23,3 +23,4 @@ abline(a=0,b=1,lty=2,col="red")
 plot(I(P.x/B.x)~I(P.y/B.y),data=DO_DK,pch=19,col=col2rgbt("black",1/5),
      xlab="Daisuke's P/B",ylab="Derek's P/B")
 abline(a=0,b=1,lty=2,col="red")
+

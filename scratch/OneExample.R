@@ -53,7 +53,7 @@ ALKInfo <- read.csv("data/prepped/ALKInfo.csv",stringsAsFactors=FALSE) %>%
 # ======================================================================
 
 # Choose a wbic
-WBIC_YEAR <- "1001300_1999"
+WBIC_YEAR <- "1427400_2003"
 # Isolate length data
 fmdb_1 <- filterD(fmdb,wbic_year==WBIC_YEAR)
 # get PE and size data
@@ -63,7 +63,7 @@ HA <- getSize(fmdb_1,wbic)
 tmp <- doLWReg(fmdb_1,LWRegs)
 fmdb_1 <- tmp$df
 # Find ALK
-tmp <- doALK(fmdb_1,ALKInfo,"empirical")
+tmp <- doALK(fmdb_1,ALKInfo,"smoothed")
 fmdb_1 <- tmp$df
 headtail(fmdb_1)
 
