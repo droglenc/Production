@@ -238,7 +238,7 @@ min.len.age3 <- lencat(min(la$len.in[la$age==3],na.rm=TRUE),w=0.5)
 # ======================================================================
 # Read and prep the FMDB data file
 ## Selected only needed columns, renamed those columns
-fmdb <- read.csv("data/original/walleye_raw_updated_8_4_17.csv",
+fmdb <- read.csv("data/original/raw_data_walleye_20170803.csv",
                  stringsAsFactors=FALSE,na.strings=c("-","NA",""))
 log <- c(log,paste("Loaded walleye FMDB file with",ncol(fmdb),
                    "variables and",nrow(fmdb),"records."))
