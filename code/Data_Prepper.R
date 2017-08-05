@@ -138,6 +138,13 @@ wbicInfo %<>% mutate(class=mapvalues(class,from=c("SCC","SWC","SWD"),
                                      to=c("SIM","SIM","SIM")))
 xtabs(~class,data=wbicInfo)
 headtail(wbicInfo)
+## Fill in some information that was missing from the files but was 
+## available in the online lakes finder (addresses some later issues)
+#### For Patten Lake
+wbicInfo$county[wbicInfo$wbic==653700] <- "Florence"
+wbicInfo$size[wbicInfo$wbic==653700] <- 254*0.404686
+wbicInfo$lat[wbicInfo$wbic==653700] <- 45.85417480
+wbicInfo$long[wbicInfo$wbic==653700] <- -88.41985940
 ## Write out the file ... wbicInfo.csv
 if (writePreppedFiles) {
   write.csv(wbicInfo,"data/prepped/wbicInfo.csv",row.names=FALSE)
@@ -220,6 +227,8 @@ if (writePreppedFiles) {
 ## round down to nearest 0.5-in category
 min.len.age3 <- lencat(min(la$len.in[la$age==3],na.rm=TRUE),w=0.5)
 
+
+
 # ======================================================================
 # Read and prep the FMDB data file
 ## Selected only needed columns, renamed those columns
@@ -264,8 +273,8 @@ rows2delete <- which(fmdb$FISH_LENGTH_OR_LOWER_IN_AMT==0 &
 if (length(rows2delete)>0) fmdb <- fmdb[-rows2delete,]
 log <- c(log,paste("Deleted",length(rows2delete),
                    "rows from the FMDB in a 'small fish' bin."))
-## If no or zero numbers of fish but there are lengths then 
-## assume there is one fish.
+## If no or zero numbers of fish but there are lengths then assume
+## there is one fish.
 fmdb$FISH_COUNT_AMT[is.na(fmdb$FISH_COUNT_AMT) & 
                     !is.na(fmdb$FISH_LENGTH_OR_LOWER_IN_AMT)] <- 1
 fmdb$FISH_COUNT_AMT[fmdb$FISH_COUNT_AMT==0 & 
@@ -280,6 +289,17 @@ log <- c(log,tmp[-5])
 fmdb %<>% mutate(len.mm=len.in*25.4) %>%
   select(wbic_year,wbic,year,len.in,len.mm,sex,lennote) %>%
   arrange(wbic,year,len.mm)
+## WBIC_YEAR = "1018500_2003" had three large fish where the len.in
+## was clearly mm. This corrects that for those three fish.
+rows2correct <- which(fmdb$wbic_year=="1018500_2003" & fmdb$len.in>500)
+fmdb$len.in[rows2correct] <- fmdb$len.in[rows2correct]/25.4
+fmdb$len.mm[rows2correct] <- fmdb$len.mm[rows2correct]/25.4
+## Removed fish that had a len.in>40 ... these were mostly a result of
+## expanding lengths where the upper length was entered incorrectly
+## (e.g., entering 134 instead of 13.4).
+rows2delete <- which(fmdb$len.in>40)
+if (length(rows2delete)>0) fmdb <- fmdb[-rows2delete,]
+log <- c(log,paste("Deleted",length(rows2delete),"rows with a len.in >40."))
 ## Remove fish that are shorter than the minimum length of age-3 fish
 ## We are ultimately going to limit the data to age-3 fish, so no need
 ## to keep fish with lengths that will never become age 3.
@@ -288,6 +308,10 @@ if (length(rows2delete)>0) fmdb <- fmdb[-rows2delete,]
 log <- c(log,paste0("Deleted ",length(rows2delete),
                     " rows with a len.in less than the minimum length of age-3 fish (",
                     min.len.age3,")."))
+## Still some fish with no lengths ... remove these
+rows2delete <- which(is.na(fmdb$len.mm))
+if (length(rows2delete)>0) fmdb <- fmdb[-rows2delete,]
+log <- c(log,paste("Deleted",length(rows2delete),"rows without a len.mm."))
 ## Join on the county and lake class variables
 ##   Note that only 3 vars are kept in wbicInfo so that only county
 ##     and class (and not mean_depth, etc.) will be added
@@ -306,11 +330,14 @@ if (writePreppedFiles) {
 
 
 # ======================================================================
-# Write out log file
-logconn <- file(paste0("data/prepped/dataPrepper_logs/dataPrepperLog_",
-                       format(Sys.time(),"%d%b%Y_%H%M"),".txt"))
-writeLines(log,logconn)
-close(logconn)
+if (writePreppedFiles) {
+  # Write out log file
+  logconn <- file(paste0("data/prepped/dataPrepper_logs/dataPrepperLog_",
+                         format(Sys.time(),"%d%b%Y_%H%M"),".txt"))
+  writeLines(log,logconn)
+  close(logconn)
 
-# Compare with the most recent previous file
-source("code/compDataPrepperLogs.R")
+  # Compare with the most recent previous file
+  source("code/compDataPrepperLogs.R")
+}
+
