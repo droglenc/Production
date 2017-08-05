@@ -145,6 +145,12 @@ wbicInfo$county[wbicInfo$wbic==653700] <- "Florence"
 wbicInfo$size[wbicInfo$wbic==653700] <- 254*0.404686
 wbicInfo$lat[wbicInfo$wbic==653700] <- 45.85417480
 wbicInfo$long[wbicInfo$wbic==653700] <- -88.41985940
+#### For Plum Lake
+wbicInfo$county[wbicInfo$wbic==2963200] <- "Vilas"
+wbicInfo$size[wbicInfo$wbic==2963200] <- 225.19*0.404686
+wbicInfo$lat[wbicInfo$wbic==2963200] <- 46.22133830
+wbicInfo$long[wbicInfo$wbic==2963200] <-  -89.50435070
+
 ## Write out the file ... wbicInfo.csv
 if (writePreppedFiles) {
   write.csv(wbicInfo,"data/prepped/wbicInfo.csv",row.names=FALSE)
