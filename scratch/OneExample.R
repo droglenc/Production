@@ -71,7 +71,7 @@ if (nrow(fmdb_1)>1) {
   sum_1 <- group_by(fmdb_1,age) %>%
     summarize(snum=n(),mwt=mean(wt)/1000) %>%
     mutate(pnum=snum/sum(snum)*PE,twt=pnum*mwt) %>%
-    calcPB(age.c=1,num.c=4,twt.c=5,area=HA)
+    calcPB(age.c="age",num.c="pnum",twt.c="twt",area=HA,adjAgeGaps=TRUE)
   P <- sum_1$PperA
   B <- sum_1$BperA
 } else P <- B <- NA
