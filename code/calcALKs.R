@@ -132,7 +132,7 @@ res_a <- ALKINFO(la,"ALL","ALL",writePreppedFiles)
 ##    NO for "small" n, few age-classes, few length-classes (as defined
 ##    by the "cut"offs below) or the multinomial model was not fit (i.e,
 ##    this would imply that the epirical ALK was questionable as well.)
-n.cut <- 25; ages.cut <- 5; lens.cut <- 5
+n.cut <- 30; ages.cut <- 5; lens.cut <- 5
 alk_res <- rbind(res_wy,res_w,res_c,res_a) %>%
   mutate(use=case_when(n < n.cut ~ "NO",numAges < ages.cut ~ "NO",
                        numLens < lens.cut ~ "NO",sname=="NA" ~ "NO",
@@ -154,8 +154,8 @@ if (writePreppedFiles) write.csv(alk_res,"data/prepped/ALKInfo.csv",
                                  quote=FALSE,row.names=FALSE)
 
 # ======================================================================
-# Exploring the regression results
-## Number of regressions excluded by reason
+# Exploring the ALK results
+## Number of ALKs excluded by reason
 addmargins(xtabs(~type+reason,data=filterD(alk_res,use=="NO")))
 xtabs(~use,data=filterD(alk_res,sname=="NA"))
 ## Distributions
