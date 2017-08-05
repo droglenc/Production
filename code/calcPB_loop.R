@@ -78,7 +78,7 @@ for (i in 1:ttl.wys) {
     sum_1 <- group_by(fmdb_1,age) %>%
       summarize(snum=n(),mwt=mean(wt)/1000) %>%
       mutate(pnum=snum/sum(snum)*PE[i],twt=pnum*mwt) %>%
-      calcPB(age.c=1,num.c=4,twt.c=5,area=HA[i])
+      calcPB(age.c="age",num.c="pnum",twt.c="twt",area=HA[i],adjAgeGaps=TRUE)
     P[i] <- sum_1$PperA
     B[i] <- sum_1$BperA
     ## Print out the calculation table so it can be examined later
@@ -94,33 +94,14 @@ split.wy <- do.call(rbind,strsplit(wys,"_"))
 PB_res <- data.frame(wbic_year=wys,wbic=split.wy[,1],year=split.wy[,2],
                      PE,HA,n,numAges,P,B,
                      reg.src,reg.type,alk.src,alk.type,alk.note)
-head(PB_res)
-
-
-
-
-# ======================================================================
-## Compare to Daisuke's results
-library(readxl)
-DK_res <- read_xlsx("scratch/zzzOld_FromDaisuke/Daisuke Production Estimates.xlsx") %>%
-  rename(wbic=WBIC,year=Year,wbic_year=WBIC_Year,P="P (kg/ha/y)",B="B (kg/ha)")
-str(DK_res)
-
-PB_DK <- inner_join(PB_res[,c("wbic_year","n","P","B")],
-                    DK_res[,c("wbic_year","P","B")],by="wbic_year")
-
-plot(B.x~B.y,data=PB_DK,pch=19,col=col2rgbt("black",1/5),
-     xlab="Daisuke's B",ylab="Derek's B")
-abline(a=0,b=1,lty=2,col="red")
-plot(I(B.x-B.y)~B.y,data=PB_DK,pch=19,col=col2rgbt("black",1/5),
-     xlab="Daisuke's B",ylab="Derek's B - Daisuke's B",ylim=c(-10,10))
-abline(h=0,lty=2,col="red")
-
-
-plot(P.x~P.y,data=PB_DK,pch=19,col=col2rgbt("black",1/5),
-     xlab="Daisuke's P",ylab="Derek's P")
-abline(a=0,b=1,lty=2,col="red")
-plot(I(P.x/B.x)~I(P.y/B.y),data=PB_DK,pch=19,col=col2rgbt("black",1/5),
-     xlim=c(0,0.7),ylim=c(0,0.7),
-     xlab="Daisuke's P/B",ylab="Derek's P/B")
-abline(a=0,b=1,lty=2,col="red")
+## Add use and reason variables
+n.cut <- 30; ages.cut <- 5
+PB_res %<>% mutate(use=case_when(n<n.cut ~ "NO",
+                                 numAges<ages.cut ~ "NO",
+                                 TRUE ~ "yes"),
+                   reason=case_when(n<n.cut ~ paste0("n<",n.cut),
+                                    numAges<ages.cut ~ paste0("numAges<",ages.cut),
+                                    TRUE ~ "yes"))
+## Write the file out to the results folder with a time stamp in name
+write.csv(PB_res,paste0("results/PB_",format(Sys.time(),"%d%b%Y_%H%M"),".csv"),
+          quote=FALSE,row.names=FALSE)
