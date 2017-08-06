@@ -247,7 +247,23 @@ fmdb %<>% select(WBIC,SURVEY_YEAR,SAMPLE_DATE,FISH_LENGTH_OR_LOWER_IN_AMT,
   rename(wbic=WBIC,year=SURVEY_YEAR,mon=SAMPLE_DATE,
          sex=SEX_TYPE,gear=GR_TY_SHRT_NAME) %>%
   mutate(wbic_year=paste(wbic,year,sep="_"),
-         mon=format(as.Date(mon),"%b"))
+         mon=format(as.Date(mon,"%m/%d/%Y"),"%b"),
+         gear=mapvalues(gear,from=c("BOOM SHOCKER","BOOM SHOCKER OR MINI-BOOM SHOCKER",
+                                    "BOTTOM GILL NET","DC BOOM SHOCKER",
+                                    "FLOATING GILL NET","FYKE HOOP TRAP OR DROP NET",
+                                    "FYKE NET","HOOK AND LINE","MINI BOOM SHOCKER",
+                                    "MINI FYKE NET","MINI FYKE NET WITH TURTLE EXCLUSION",
+                                    "MINI FYKE NET WITHOUT TURTLE EXCLUSION",
+                                    "MULTIPLE GEAR TYPES","SEINE","UNKNOWN",
+                                    "VERTICAL GILL NET","BACKPACK SHOCKER",
+                                    "BOTTOM TRAWL","HOOP NET","HOOP TRAP",
+                                    "LONG LINE SHOCKER","POISON","SPEARING",
+                                    "STREAM SHOCKER","TRAP NET"),
+                        to=c("boom shocker","boom shocker","other","boom shocker",
+                             "other","fykenet","fykenet","other","boom shocker",
+                             "fykenet","fykenet","fykenet","multiple","other",
+                             "unknown","other","other","other","other","other",
+                             "other","other","other","other","other")))
 ## Reduced to only WBIC_YEARs for which we have a PE
 log <- c(log,paste("This file originally had",
                    length(unique(fmdb$wbic_year)),"WBIC_YEARs"))
