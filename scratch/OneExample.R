@@ -1,22 +1,21 @@
+## Clear workspace and console
+rm(list=ls())
+cat("\014")
+
 # ######################################################################
 # ======================================================================
 #
 # ======================================================================
 # ######################################################################
 
-
-
 # ======================================================================
 # Setup
-## Clear workspace and console
-rm(list=ls())
-cat("\014")
 ## Load required packages
 library(FSA)
 library(dplyr)
 # Source local file
-source("code/calcPB_function.R")
-source("code/productionHelpers.R")
+source("code/helpers/calcPB.R")
+source("code/helpers/productionHelpers.R")
 
 
 
@@ -51,7 +50,6 @@ ALKInfo <- read.csv("data/prepped/ALKInfo.csv",stringsAsFactors=FALSE) %>%
 
 
 # ======================================================================
-
 # Choose a wbic
 WBIC_YEAR <- "1427400_2003"
 # Isolate length data
