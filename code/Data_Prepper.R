@@ -1,3 +1,6 @@
+## Clear workspace and console
+rm(list=ls()); cat("\014")
+
 # ######################################################################
 # ======================================================================
 # This script read the original data files as delivered to us from the
@@ -18,7 +21,7 @@
 # message will be printed at the end of the script that indicates if the
 # log has changed from the immediately previous version. If there are 
 # changes you should assure yourself that that was expected.
-#
+writePreppedFiles <- TRUE
 # ======================================================================
 # ######################################################################
 
@@ -26,16 +29,11 @@
 
 # ======================================================================
 # Setup
-## Clear workspace and console
-rm(list=ls())
-cat("\014")
 ##  Load required packages
 library(FSA)
 library(plyr)
 library(dplyr)
 library(magrittr)
-## Set whether old prepped files should be over-written (see above)
-writePreppedFiles <- TRUE
 ## Initialize log variable
 log <- c(paste0("Ran Data Prepper to create new prepped files on ",
                 date(),".","\n","\n"))
