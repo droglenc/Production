@@ -1,3 +1,6 @@
+## Clear workspace and console
+rm(list=ls()); cat("\014")
+
 # ######################################################################
 # ======================================================================
 # This script computes age-length keys by WBIC_YEAR, WBIC, lake
@@ -11,24 +14,21 @@
 
 # However, as a safeguard, the file will only be overwritten if the
 # writePreppedFiles object below is set to TRUE.
+writePreppedFiles <- TRUE
 #
+# This script requires that the Data_Prepper script has been
+# successfully run (i.e., its resultant files were created and stored
+# in the data/prepped/ folder.)
 # ======================================================================
 # ######################################################################
 
-
-
 # ======================================================================
 # Setup
-## Clear workspace and console
-rm(list=ls())
-cat("\014")
 ## Load required packages
 library(FSA)
 library(dplyr)
 library(magrittr)
 library(nnet)
-## Set whether old prepped files should be over-written (see above)
-writePreppedFiles <- TRUE
 ## A new function to construct ALKs and return some information from
 ## within a loop
 ALKINFO <- function(ladat,group,type,writeFiles) {
@@ -61,11 +61,15 @@ ALKINFO <- function(ladat,group,type,writeFiles) {
       # extra category width helps with fish larger than max observed len
       lens <- seq(minLcat,maxLcat+w,w)
       # Predicted probabilities of ages for each length category
-      # I rounded to three decimal places to eliminate chanced of a very
+      # I rounded to four decimal places to eliminate chances of a very
       # weird age prediction (i.e., without this there is a small chance
       # that, for example, a 200 mm fish could be predicted to be age 20,
       # or something similar).
       alk <- round(predict(mlr,data.frame(lcat=lens),type="probs"),3)
+      # However, there were some problems with rows not summing to 1 
+      # (e.g., summing to 1.01); thus force all rows to sum to 1.
+      alk <- prop.table(alk,margin=1)
+      # Give the row names the names of the lengths.
       rownames(alk) <- lens
       # Save the smoothed ALK to an R object
       fname2 <- paste("sALK",group,sep="_")
@@ -92,7 +96,7 @@ la <- read.csv("data/prepped/len_age.csv",stringsAsFactors=FALSE) %>%
 
 
 # ======================================================================
-# Compute all ALKs and save out to R objects
+# Compute all ALKs and save out to individual R objects
 ## By WBIC_YEAR
 wys <- unique(la$wbic_year)
 res_wy <- ALKINFO(filterD(la,wbic_year==wys[1]),wys[1],
@@ -116,7 +120,7 @@ lc <- unique(la$class)
 lc <- lc[!is.na(lc)]
 res_c <- ALKINFO(filterD(la,class==lc[1]),lc[1],"CLASS",writePreppedFiles)
 for (i in 2:length(lc)) {
-  cat(paste0("i=",i," of ",length(lc)," for lake classes"))
+  print(paste0("i=",i," of ",length(lc)," for lake classes"))
   res_c <- rbind(res_c,ALKINFO(filterD(la,class==lc[i]),lc[i],
                                "CLASS",writePreppedFiles))
 }
@@ -149,25 +153,6 @@ headtail(alk_res)
 
 
 # ======================================================================
-# Output results to a file in data/prepped/
+# Output info results to a file in data/prepped/
 if (writePreppedFiles) write.csv(alk_res,"data/prepped/ALKInfo.csv",
                                  quote=FALSE,row.names=FALSE)
-
-# ======================================================================
-# Exploring the ALK results
-## Number of ALKs excluded by reason
-addmargins(xtabs(~type+reason,data=filterD(alk_res,use=="NO")))
-xtabs(~use,data=filterD(alk_res,sname=="NA"))
-## Distributions
-boxplot(n~reason,data=filterD(alk_res,use=="NO"),ylab="n")
-
-clrs <- col2rgbt(c("red","black"),1/6)
-plot(numLens~numAges,data=alk_res,pch=19,col=clrs[as.numeric(use)])
-abline(v=ages.cut,lty=2,col="red"); abline(h=lens.cut,lty=2,col="red")
-legend("topleft",c("NO","yes"),pch=19,col=clrs,bty="n")
-plot(numAges~n,data=alk_res,pch=19,col=clrs[as.numeric(use)],log="x")
-abline(v=n.cut,lty=2,col="red"); abline(h=ages.cut,lty=2,col="red")
-legend("topleft",c("NO","yes"),pch=19,col=clrs,bty="n")
-plot(numLens~n,data=alk_res,pch=19,col=clrs[as.numeric(use)],log="x")
-abline(v=n.cut,lty=2,col="red"); abline(h=lens.cut,lty=2,col="red")
-legend("topleft",c("NO","yes"),pch=19,col=clrs,bty="n")

@@ -1,3 +1,6 @@
+## Clear workspace and console
+rm(list=ls()); cat("\014")
+
 # ######################################################################
 # ======================================================================
 # This script computes weight-length regressions by WBIC_YEAR, WBIC,
@@ -12,7 +15,11 @@
 
 # However, as a safeguard, the file will only be overwritten if the
 # writePreppedFiles object below is set to TRUE.
+writePreppedFiles <- FALSE
 #
+# This script requires that the Data_Prepper script has been
+# successfully run (i.e., its resultant files were created and stored
+# in the data/prepped/ folder.)
 # ======================================================================
 # ######################################################################
 
@@ -20,16 +27,11 @@
 
 # ======================================================================
 # Setup
-## Clear workspace and console
-rm(list=ls())
-cat("\014")
 ## Load required packages
 library(FSA)
 library(dplyr)
 library(magrittr)
 library(nlme)
-## Set whether old prepped files should be over-written (see above)
-writePreppedFiles <- FALSE
 ## A new function to extract some information from the lists returned
 ## by lmList that contains each length-weight regression by group
 LWINFO <- function(lms,type) {
@@ -108,26 +110,8 @@ lw_res <- rbind(wy_res,w_res,c_res,a_res) %>%
   select(use,type,which,loga,a,b,n,rsq,minLen,maxLen,reason)
 headtail(lw_res)
 
+
 # ======================================================================
 # Output results to a file in data/prepped/
 if (writePreppedFiles) write.csv(lw_res,"data/prepped/LWregs.csv",
                                  quote=FALSE,row.names=FALSE)
-
-# ======================================================================
-# Exploring the regression results
-## Number of regressions excluded by reason
-addmargins(xtabs(~type+reason,data=filterD(lw_res,use=="NO")))
-## Distributions
-boxplot(n~reason,data=filterD(lw_res,use=="NO"),ylab="n")
-boxplot(rsq~reason,data=lw_res,ylab="r^2")
-boxplot(b~reason,data=lw_res,ylab="b")
-
-clrs <- col2rgbt(c("red","black"),1/4)
-plot(loga~b,data=lw_res,pch=19,col=clrs[as.numeric(use)])
-abline(v=b.cut,lty=2,col="red")
-legend("topright",c("NO","yes"),pch=19,col=clrs,bty="n")
-plot(rsq~n,data=lw_res,pch=19,col=clrs[as.numeric(use)],log="x")
-abline(v=n.cut,lty=2,col="red"); abline(h=rsq.cut,lty=2,col="red")
-legend("bottomright",c("NO","yes"),pch=19,col=clrs,bty="n")
-with(lw_res,plot(n,maxLen-minLen,log="x",pch=19,col=clrs[as.numeric(use)]))
-legend("bottomright",c("NO","yes"),pch=19,col=clrs,bty="n")
