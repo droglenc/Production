@@ -12,7 +12,7 @@ source("code/helpers/productionHelpers.R")
 ## Type of ALK to use ("empirical" or "smoothed")
 alk2use <- "smoothed"
 ## WBIC_YEAR
-WBIC_YEAR <- "396500_2015"
+WBIC_YEAR <- "2962400_2009"
 
 # ======================================================================
 # Load the data.frames and do initial wranglings
@@ -52,7 +52,7 @@ fmdb_1 <- tmp$df
 headtail(fmdb_1)
 # Find WL regression, Predict and add weights
 if (nrow(fmdb_1)>0) {
-  tmp <- doLWReg(fmdb_1,LWRegs)
+  tmp <- doLWReg(fmdb_1,"len.mm","wt",LWRegs)
   fmdb_1 <- tmp$df  
 }
 

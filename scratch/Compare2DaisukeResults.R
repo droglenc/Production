@@ -1,6 +1,6 @@
 # ======================================================================
 ## Compare to Daisuke's results
-DO_res <- read.csv("results/PB2_06Aug2017_1042.csv",stringsAsFactors=FALSE)
+DO_res <- read.csv("results/PB_06Aug2017_1158.csv",stringsAsFactors=FALSE)
 xtabs(~use,data=DO_res)
 DO_res %<>% filterD(use=="yes")
 library(readxl)

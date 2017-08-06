@@ -322,8 +322,8 @@ fmdb$FISH_COUNT_AMT[fmdb$FISH_COUNT_AMT==0 &
                     !is.na(fmdb$FISH_LENGTH_OR_LOWER_IN_AMT)] <- 1
 ## Generated individual lengths for fish recorded in length bins
 tmp <- capture.output(fmdb %<>% expandCounts(~FISH_COUNT_AMT,
-                         ~FISH_LENGTH_OR_LOWER_IN_AMT+FISH_LEN_UPPER_IN_AMT,
-                         new.name="len.in"),type="message")
+                      ~FISH_LENGTH_OR_LOWER_IN_AMT+FISH_LEN_UPPER_IN_AMT,
+                      new.name="len.in"),type="message")
 log <- c(log,tmp[-5])
 ## Added a length in mm variable
 ## Rearranged the columns and sorted the rows by wbic, year, and length
