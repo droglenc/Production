@@ -161,25 +161,45 @@ if (writePreppedFiles) {
 
 # ======================================================================
 # Read and prep the age-length-weight data file
-## Reduced to only WBICs for which we have a PE
 ## Selected only needed columns, renamed those columns -- note that the
 ##   Number.of.Fish was not selected because all 1s
-## Added length in mm and wbic-year combination variables
+## Added month, length in mm, and wbic-year combination variables
+## Converted gears to smaller groupings
 ## Converted weight to numeric (was character because of commas)
+## Reduced to only WBICs for which we have a PE
+## Reduced to only fyke nets
+## Reduced to only sampling in March, April, and May
 ## Rearranged columns and sorted rows by wbic, year, length, and age
 lwa <- read.csv("data/original/length_weight_age_raw_data_8_1_17.csv",
                 stringsAsFactors=FALSE,na.strings=c("-","NA",""))
 log <- c(log,paste("Loaded length_weight_age file with",
                    ncol(lwa),"variables and",nrow(lwa),"records."))
-lwa %<>% select(WBIC,Survey.Year,Length.IN,Weight.Grams,
-                Age..observed.annuli.,Age.Structure.,Gender) %>%
-  rename(wbic=WBIC,year=Survey.Year,sex=Gender,
+lwa %<>% select(WBIC,Survey.Year,Sample.Date,Length.IN,Weight.Grams,
+                Age..observed.annuli.,Age.Structure.,Gender,Gear.Type) %>%
+  rename(wbic=WBIC,year=Survey.Year,mon=Sample.Date,sex=Gender,
          len.in=Length.IN,wt=Weight.Grams,
-         age=Age..observed.annuli.,strux=Age.Structure.) %>%
-  mutate(len.mm=len.in*25.4,
+         age=Age..observed.annuli.,strux=Age.Structure.,gear=Gear.Type) %>%
+  mutate(mon=format(as.Date(mon,"%m/%d/%Y"),"%b"),
+         gear=mapvalues(gear,from=c("AC BOOM SHOCKER","BACKPACK SHOCKER",
+                                    "BOOM SHOCKER","BOOM SHOCKER OR MINI-BOOM SHOCKER",
+                                    "BOTTOM GILL NET","DC BOOM SHOCKER","FYKE NET",
+                                    "GRID","HOOK AND LINE","HOOP NET","HOOP TRAP",
+                                    "MINI-BOOM SHOCKER","MINI BOOM SHOCKER",
+                                    "MINI FYKE NET","MINI FYKE NET WITH TURTLE EXCLUSION",
+                                    "MINI FYKE NET WITHOUT TURTLE EXCLUSION",
+                                    "MULTIPLE GEAR TYPES","POISON","SEINE",
+                                    "STREAM SHOCKER","TEST NET","UNKNOWN"),
+                                 to=c("boom shocker","other","boom shocker",
+                                      "boom shocker","other","boom shocker",
+                                      "fykenet","other","other","other","other",
+                                      "boom shocker","boom shocker","mini-fyke",
+                                      "mini-fyke","mini-fyke","multiple","other",
+                                      "other","other","other","unknown")),
+         len.mm=len.in*25.4,
          wt=as.numeric(gsub(',','',wt)),
          wbic_year=paste(wbic,year,sep="_")) %>%
   filterD(wbic_year %in% wbic_years) %>%
+  filterD(gear=="fykenet",mon %in% c("Mar","Apr","May")) %>%
   select(wbic_year,wbic,year,len.in,len.mm,wt,age,sex,strux) %>%
   arrange(wbic,year,len.mm,age)
 ## Join on the county and lake class variables
@@ -193,10 +213,6 @@ lwa <- plyr::join(lwa,wbicInfo[,c("wbic","county","class")],by="wbic") %>%
 lw <- filterD(lwa,!is.na(len.mm),!is.na(wt)) %>%
   select(-age,-strux)
 log <- c(log,paste(nrow(lw),"fish had lengths and weights."))
-## Removed fish for which the weight variable was =0
-rows2delete <- which(lw$wt==0)
-if (length(rows2delete)>0) lw <- lw[-rows2delete,]
-log <- c(log,paste("Deleted",length(rows2delete),"rows with weights of zero."))
 ## Removed fish for which the len.in variable was <1
 rows2delete <- which(lw$len.in<1)
 if (length(rows2delete)>0) lw <- lw[-rows2delete,]
@@ -261,15 +277,16 @@ fmdb %<>% select(WBIC,SURVEY_YEAR,SAMPLE_DATE,FISH_LENGTH_OR_LOWER_IN_AMT,
                                     "STREAM SHOCKER","TRAP NET"),
                         to=c("boom shocker","boom shocker","other","boom shocker",
                              "other","fykenet","fykenet","other","boom shocker",
-                             "fykenet","fykenet","fykenet","multiple","other",
+                             "mini-fyke","mini-fyke","mini-fyke","multiple","other",
                              "unknown","other","other","other","other","other",
                              "other","other","other","other","other")))
 ## Reduced to only WBIC_YEARs for which we have a PE
 log <- c(log,paste("This file originally had",
                    length(unique(fmdb$wbic_year)),"WBIC_YEARs"))
-fmdb %<>% filterD(wbic_year %in% wbic_years)
+fmdb %<>% filterD(wbic_year %in% wbic_years) %>%
+  filterD(gear=="fykenet",mon %in% c("Mar","Apr","May"))
 log <- c(log,paste(length(unique(fmdb$wbic_year)),
-         "WBIC_YEARs remained after matching with PEs."))
+         "WBIC_YEARs remained after matching with PEs and reducing to fyke nets in spring."))
 ## Handling database errors or issues (per AR e-mail 1-Aug-17)
 ## Don't use filterD() because it removes NAs which causes issues!!!!!
 ## Removed rows where a number of fish is given, but no lengths

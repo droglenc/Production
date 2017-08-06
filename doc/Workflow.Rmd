@@ -10,7 +10,30 @@ knitr::opts_chunk$set(echo = TRUE)
 
 # Data Preparations
 ## General from the Original Files (in `Data_Prepper.R`)
-1. Load files in 'data/original/', prep as described in `Data_Prepper.R`, and output prepped files to 'data/prepped/'. Once properly prepped, `Data_Prepper'R` should not need to be run again. A simple log of each run of `Data_Prepper.R` is saved in 'data/prepped/dataPrepper_logs/'. These logs should be carefully examined each time new prepped files are made to compare processes to see if anything obviously went awry (i.e., items changed in the logs were as expected).
+1. Load files in 'data/original/', prep as described in `Data_Prepper.R`, and output prepped files to 'data/prepped/'. Once properly prepped, `Data_Prepper'R` should not need to be run again. A simple log of each run of `Data_Prepper.R` is saved in 'data/prepped/dataPrepper_logs/'. These logs should be carefully examined each time new prepped files are made to compare processes to see if anything obviously went awry (i.e., items changed in the logs were as expected). See script for all decisions, but major decisions made here are described below.
+    a. Population estimates (from `walleye_PE_data.csv`)
+        i. Removed all WBICs that ended in a 1 (these are lake chains).
+        i. Found all unique WBIC_YEARs in this file as we need a PE to be able to compute P and B.
+    a. WBIC characteristics file (from `ROW.csv` and `Supplementary Dataset 8 - Final Lake Class List.csv`)
+        i. Joined the WBIC information from the DNR with Rypel's Data Supplement 8 that had lake classifications and other information in it.
+        i. A very small number of WBICs were from the "simple" lake classification types, so those were lumped as "simple."
+    a. Weight-Length data (from `length_weight_age_raw_data_DATEHERE.csv`)
+        i. Joined on lake classification, etc. information
+        i. Reduced to only those WBIC_YEARs with PEs.
+        i. Reduced to only fyke net caught fish from March, April, and May.
+        i. Removed fish for which the length (in) or weight (g) was less than 1. [*Legacy ... these fish no longer existed after previous decisions.*]
+    a. Age-Length data (from `length_weight_age_raw_data_DATEHERE.csv`)
+        i. Joined on lake classification, etc. information
+        i. Reduced to only those WBIC_YEARs with PEs.
+        i. Reduced to only fyke net caught fish from March, April, and May.
+        i. Removed fish less than 5 inches that were older than age 3.
+        i. NOTE: found smallest age-3 fish for use in next step.
+    a. FMDB lengths data (from `raw_data_walleye_DATE HERE.csv`)
+        i. Joined on lake classification, etc. information
+        i. Reduced to only those WBIC_YEARs with PEs.
+        i. Reduced to only fyke net caught fish from March, April, and May.
+        i. Removed rows that were obvious errors (e.g., upper length greater than lower length, negative lengths).
+        i. Generated individual lengths for those fish measured in length bins (*did this for inches data as that was the native recordings, then converted results to mm*).
 
 ## Compute All Weight-Length Regressions (in `calcLWRegs.R`)
 1. Load prepped `len_wt.csv` file.
