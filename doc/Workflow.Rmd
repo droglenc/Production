@@ -1,6 +1,6 @@
 ---
 title: "Production Workflow"
-author: "Derek H. Ogle"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
 output: pdf_document
 ---
 
@@ -9,60 +9,58 @@ knitr::opts_chunk$set(echo = TRUE)
 ```
 
 # Data Preparations
-## General (from Original Files)
-1. Load files in 'data/original/', prep as described in `Data_Prepper.R`, and output prepped files to 'data/prepped/'. Once properly prepped, `Data_Prepper'R` should not need to be run again. A simple log of each run of `Data_Prepper.R` is saved in 'data/prepped/dataPrepper_logs/'. These logs should be carefully examined each time new prepped files are made to compare processes to see if anything obviously went awry.
+## General from the Original Files (in `Data_Prepper.R`)
+1. Load files in 'data/original/', prep as described in `Data_Prepper.R`, and output prepped files to 'data/prepped/'. Once properly prepped, `Data_Prepper'R` should not need to be run again. A simple log of each run of `Data_Prepper.R` is saved in 'data/prepped/dataPrepper_logs/'. These logs should be carefully examined each time new prepped files are made to compare processes to see if anything obviously went awry (i.e., items changed in the logs were as expected).
 
-## Computing All Weight-Length Regressions (in `calcLWRegs.R`)
-1. Loaded prepped `len_wt.csv` file.
-1. Computed regresions and extracted coefficients (loga and b), sample size (n), coefficient of determination ($r^2$), and range of lengths by
-    a. Each WBIC_YEAR.
-    a. Each WBIC.
-    a. Each lake class.
-    a. All fish regardless of any classification.
-1. Combined all regressions into a single data.frame.
-1. Created a `use` variable that is set to `yes` if the regression is "valid" to use and `NO` if it is not valid to use. A regression was considered valid to use if it met the following criteria (see code in `calcLWRegs.R` for specific criteria).
-    a. Sample size was above some minimum threshold. **This is currently set at 25.**
-    a. $r^2$ was above some minimum threshold. **This is currently set at 0.85.**
-    a. b was between 2 and 4 ([Froese (2006)](http://www.fishbase.de/rfroese/LWR_jai_805.pdf) showed empirically that most MEAN (by species) values of b were between 2.5 and 3.5. Individual values would likely be a little wider; thus, the value set here.)
-    a. **QUESTION** -- Do we want to include a criterion based on the range of lengths in the regression. There are a handful of regressions with a fairly small range of values (~8 regression, of those remaining after above, with a range less than 200 mm).
-1. Output this data.frame to 'data/prepped/' as `LWRegs.csv` so that this work would not have to be run each time and so that the weight-length regressions used could be more easily observed.
+## Compute All Weight-Length Regressions (in `calcLWRegs.R`)
+1. Load prepped `len_wt.csv` file.
+1. Compute regressions and extract coefficients (loga and b), sample size (n), coefficient of determination ($r^2$), and range of lengths for (1) each WBIC_YEAR, (2) each WBIC, (3) each lake class, and (4) all fish regardless of any classification.
+1. Combine all regressions into a single data.frame.
+    a. Create a `use` variable that is set to `yes` if the regression is "valid" to use and `NO` if it is not valid to use. A regression was considered valid to use if it met the following criteria. **QUESTION: Did Goto assess the "validity" of weight-length regressions and, if so, how?**
+        i. Sample size was above some minimum threshold. **Currently set at 25.**
+        i. $r^2$ was above some minimum threshold. **Currently set at 0.85.**
+        i. b was between 2 and 4 ([Froese (2006)](http://www.fishbase.de/rfroese/LWR_jai_805.pdf) showed empirically that most MEAN (by species) values of b were between 2.5 and 3.5. Individual values would likely be a little wider; thus, the value set here.)
+        i. **QUESTION -- Do we want to include a criterion based on the range of lengths in the regression? There are a handful of regressions with a fairly small range of values (~8 regression, of those remaining after above, with a range less than 200 mm).**
+1. Output this data.frame to 'data/prepped/' as `LWRegs.csv`. This is used in `calcPB_loop` so that the regressions do not have to be run each time and so that the weight-length regression results can be more easily observed.
+    a. Note that a script for simple exploratory summaries of the regression results is in the scratch\ folder.
 
-## Computing All Age-Length Keys (in `calcALKs.R`)
-1. Loaded prepped `len_age.csv` file.
-1. Attempted to compute empirical and smoothed ALKs by
-    a. Each WBIC_YEAR.
-    a. Each WBIC.
-    a. Each lake class.
-    a. All fish regardless of any classification.
-1. Output each ALK to a ".RData" file that can be loaded later.
+## Compute All Age-Length Keys (in `calcALKs.R`)
+1. Load prepped `len_age.csv` file.
+1. Attempt to compute empirical and smoothed ALKs by (1) each WBIC_YEAR, (2) each WBIC, (3) each lake class, and (4) all fish regardless of any classification.
+1. Output each ALK to a ".RData" file that can be loaded later (thus, these are not created "on the fly" each time).
     a. Note that smoothed ALKs could not be reliably computed when n less than 10 or number of ages present was less than 3. Additionally, in a small number of situations, the model did not converge.
-1. Created a `use` variable that is set to `yes` if the ALK is "valid" to use and `NO` if it is not valid to use. An ALK was considered valid to use if it met the following criteria.
-    1. Sample size was above some minimum threshold. **This is currently set at 30.**
-    1. The number of ages in the ALK was above some minimum threshold. **This is currently set at 5.**
-    1. The number of length categories in the ALK was above some minimum threshold. **This is currently set at 5 (i.e., using 20-mm length classes this ensure a range of at least 100 mm).**
-1. Output a data file (`ALKInfo.csv`) that contained information about each ALK.
-1. **QUESTION**
+1. Created a `use` variable that is set to `yes` if the ALK is "valid" to use and `NO` if it is not valid to use. An ALK was considered valid to use if it met the following criteria. **QUESTION: Did Goto assess the "validity" of ALKs and, if so, how?**
+    1. Sample size was above some minimum threshold. **Currently set at 30.**
+    1. The number of ages in the ALK was above some minimum threshold. **Currently set at 5.**
+    1. The number of length categories in the ALK was above some minimum threshold. **Currently set at 5 (i.e., using 20-mm length classes this ensure a range of at least 100 mm).**
+    1. The smoothed ALK could not be fit (see above). It was assumed that if the smoothed ALK could not be fit that there were likely issues with the empirical ALK as well and, thus, both were deemed to not be "valid."
+1. Output a data file (`ALKInfo.csv`) that contained information about each ALK. This is used in `calcPB_loop` so that the ALKs do not have to be constructed each time.
+    a. Note that a script for simple exploratory summaries of the ALK results is in the scratch\ folder.
 
-\newpage
+## Computed P and B for each WBIC_Year (in `calcPB_loop.R`)
 
-1. Loaded the prepped files
-    1. Loaded the prepped `wbic` file.
-    1. Loaded the prepped `fmdb` file.
-    1. Loaded the prepped `PE` file.
-        1. Removed WBIC_YEARs from the `PE` file that did not exist in the `fmdb` file (i.e., even if a PE existed, we can not calculate P without lengths to turn into weights and ages).
-    1. Loaded the `LWRegs` file.
-        1. Removed weight-length regressions that were not valid (see above).
-    1. Loaded the `ALKInfo` file.
-        1. Removed ALKs that were not valid (see above).
-    1. Looped through all remaining WBIC_YEARs in the `PE` file, computing P and B for each.
-        1. The weight-length regression used was the first of these that was considered valid: WBIC_YEAR, WBIC, lake classification, all fish (no classifications). **Note that weight was estimated for individual fish.**
-        1. The ALK used was the first of these that was considered valid: WBIC_YEAR, WBIC, lake classification, all fish (no classifications).
-        1. After age assignments, reduced to just age-3 fish.
-        1. Mean weight-at-age and number of fish sampled at age were summarized.
-        1. The number of fish in the population at each age was determined by the proportion of the sample at each age and the PE. **QUESTION: What should we do when the sample size exceeded the PE?**
-        1. These summaries were sent to `calcPB()` to compute P and B.
-        1. An intermediate table (like Tables 1 in Rypel et al. manuscripts) was printed to a CSV for each WBIC_YEAR for which a P could be calculated.
-    1. A summary table of P, B, other values (PE, n, number of ages, etc), and some notes was printed to a CSV file in the results folder following the loop.
-        1. Summary table included a `use` variable that is set to `yes` if the results met the following criterion for "validity"
-            1. Sample size was above some minimum threshold. Goto use a threshold of 30 here. **This is currently set at 30.**
-            1. The number of ages was above some minimum threshold. Goto used a threshold of 5 here. **This is currently set at 5.**
+1. Loaded the prepped files (from data/prepped/ folder)
+    a. Loaded the lake characteristics file (in `wbicInfo.csv`).
+    a. Loaded the fmdb individual fish information file (in `fmdb_WAE.csv`).
+    a. Loaded the PE values file (in `PE.cwv`).
+        i. Removed WBIC_YEARs from the PE file that did not exist in the FMDB file (i.e., even if a PE existed, we can not calculate P without lengths to turn into weights and ages).
+    a. Loaded the weight-length regression results file (in `LWRegs.csv`).
+        i. Removed weight-length regressions that were deemed not valid (see above).
+    a. Loaded the age-length key info file (in `ALKInfo.csv`).
+        i. Removed ALKs that were deemed not valid (see above).
+1. Looped through all remaining WBIC_YEARs in the PE file, computing P and B for each.
+    a. The weight-length regression used was the first of these that was considered valid: WBIC_YEAR, WBIC, lake classification, all fish (no classifications).
+        i. **QUESTION: Weight was estimated for individual fish and then the mean weight-at-age was calculated (see below). Did Goto do this or did he use the weight-length relationship to estimate mean weight from mean length.**
+    a. The ALK used was the first of these that was considered valid: WBIC_YEAR, WBIC, lake classification, all fish (no classifications).
+        i. **QUESTION: Ages were assigned to individual fish using the Isermann-Knight (2003) method. Did Goto do this or did he use "traditional" methods to estimate the proportions at age and mean length at age?**
+        i. **NOTE that we need to decide whether to use empirical or smoothed ALKs.**
+    a. After age assignments, reduced to just age-3 fish (as the PEs were for just age-3 fish).
+    a. Mean weight-at-age and number of fish sampled at age were summarized (from individual fish).
+    a. The number of fish in the population at each age was determined by the proportion of the sample at each age and the PE. **QUESTION: What should we do when the sample size exceeded the PE?**
+    a. These summaries were sent to `calcPB()` to compute P and B. [*This function has been validated in the sense that if it is given the same inputs as Rypel's Excel spreadsheet it computes the same P and B and intermediate results.*]
+    a. An intermediate table (like Tables 1 in Rypel et al. manuscripts) was printed to an individual CSV (in results/CalcPB_Tables/) for each WBIC_YEAR for which a P could be calculated.
+1. A summary table of P, B, other values (PE, n, number of ages, etc), and some notes was printed to a CSV file in the results folder following the loop. File is `PB_` with a suffix that is the date and time that the file was created (to allow comparisons if new decisions are made).
+    a. Summary table included a `use` variable that is set to `yes` if the results met the following criterion for "validity."
+        i. Sample size was above some minimum threshold. **Currently set at 30.** [*Goto used a threshold of 30 here.*]
+        i. The number of ages was above some minimum threshold. **Currently set at 5.** [*Goto used a threshold of 5 here.*]
+
