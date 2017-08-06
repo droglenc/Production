@@ -13,6 +13,9 @@ source("code/helpers/productionHelpers.R")
 # Those values, along with some other information are then output to a
 # file in the results/ folder for further analysis.
 #
+# This script differs from calcPB_loop2.R in that it assigns a weight to
+# individual fish, instead of converting mean lengths to mean weights.
+#
 # This script requires that the Data_Prepper, calcLWRegs, and calcALKs
 # scripts have all been successfully run (i.e., their resultant files
 # were created and stored in the data/prepped/ folder.)
@@ -80,7 +83,7 @@ for (i in 1:ttl.wys) {
   alk.src[i] <- tmp$which; alk.type[i] <- tmp$type; alk.note[i] <- tmp$note
   # Apply LWRegs (must check fmdb_1 as it may have no fish after ALK)
   if (nrow(fmdb_1)>0) {
-    tmp <- doLWReg(fmdb_1,LWRegs)
+    tmp <- doLWReg(fmdb_1,"len.mm","wt",LWRegs)
     fmdb_1 <- tmp$df
     reg.src[i] <- tmp$reg$which; reg.type[i] <- tmp$reg$type    
   }
