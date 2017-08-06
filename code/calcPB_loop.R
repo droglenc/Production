@@ -1,22 +1,27 @@
+## Clear workspace and console
+rm(list=ls()); cat("\014")
+
 # ######################################################################
 # ======================================================================
+# This script will loop through all valid WBIC_YEARs (i.e., has a PE and
+# has some measured fish in the fmdb) and calculate P and B for each.
+# Those values, along with some other information are then output to a
+# file in the results/ folder for further analysis.
 #
+# This script requires that the Data_Prepper, calcLWRegs, and calcALKs
+# scripts have all been successfully run (i.e., their resultant files
+# were created and stored in the data/prepped/ folder.)
 # ======================================================================
 # ######################################################################
-
-
 
 # ======================================================================
 # Setup
-## Clear workspace and console
-rm(list=ls())
-cat("\014")
 ## Load required packages
 library(FSA)
 library(dplyr)
 # Source local file
-source("code/calcPB_function.R")
-source("code/productionHelpers.R")
+source("code/helpers/calcPB.R")
+source("code/helpers/productionHelpers.R")
 
 
 
@@ -63,7 +68,7 @@ for (i in 1:ttl.wys) {
   tmp <- doLWReg(fmdb_1,LWRegs)
   fmdb_1 <- tmp$df
   reg.src[i] <- tmp$reg$which; reg.type[i] <- tmp$reg$type
-  tmp <- doALK(fmdb_1,ALKInfo,"empirical")
+  tmp <- doALK(fmdb_1,ALKInfo,"smoothed")
   fmdb_1 <- tmp$df
   alk.src[i] <- tmp$which; alk.type[i] <- tmp$type
   alk.note[i] <- tmp$note
