@@ -12,7 +12,7 @@ source("code/helpers/productionHelpers.R")
 ## Type of ALK to use ("empirical" or "smoothed")
 alk2use <- "smoothed"
 ## WBIC_YEAR
-WBIC_YEAR <- "396500_2015"
+WBIC_YEAR <- "1001000_2007"
 
 # ======================================================================
 # Load the data.frames and do initial wranglings
@@ -50,15 +50,15 @@ HA <- getSize(fmdb_1,wbic)
 tmp <- doALK(fmdb_1,ALKInfo,alk2use)
 fmdb_1 <- tmp$df
 headtail(fmdb_1)
-# Find WL regression, Predict and add weights
-if (nrow(fmdb_1)>0) {
-  tmp <- doLWReg(fmdb_1,LWRegs)
-  fmdb_1 <- tmp$df  
-}
 
 if (nrow(fmdb_1)>1) {
-  sum_1 <- group_by(fmdb_1,age) %>%
-    summarize(snum=n(),mwt=mean(wt)/1000) %>%
+  sum_1 <- group_by(fmdb_1,age,wbic_year,wbic,year,class) %>%
+    summarize(snum=n(),mlen=mean(len.mm)) %>%
+    ungroup() %>% as.data.frame()
+  tmp <- doLWReg(sum_1,"mlen","mwt",LWRegs)
+  sum_1 <- tmp$df %>%
+    select(-wbic_year,-wbic,-year,-class) %>%
+    mutate(mwt=mwt/1000) %>%
     mutate(pnum=snum/sum(snum)*PE,twt=pnum*mwt) %>%
     calcPB(age.c="age",num.c="pnum",twt.c="twt",area=HA,adjAgeGaps=TRUE)
   P <- sum_1$PperA
