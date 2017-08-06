@@ -46,7 +46,7 @@ getSize <- function(df,WB,verbose=FALSE) {
 #' @param df A data.frame filtered from the FMDB file for one WBIC_YEAR.
 #' @param LWRegs A data.frame of valid weight-length regressions filtered from the LWRegs file.
 #'  
-doLWReg <- function(df,LWRegs) {
+doLWReg <- function(df,lens,wt,LWRegs) {
   # Find WBIC,YEAR,WBIC_YEAR, and CLASS
   WBIC <- as.character(unique(df$wbic))
   YEAR <- as.character(unique(df$year))
@@ -60,7 +60,7 @@ doLWReg <- function(df,LWRegs) {
   # Get appropriate regression
   reg <- LWRegs[row,]
   # Predict weights from lens with the regression results
-  df$wt <- reg$a*df$len.mm^reg$b
+  df[,wt] <- reg$a*df[,lens]^reg$b
   # return data (with new wts) and regression information
   list(df=df,reg=reg)
 }
