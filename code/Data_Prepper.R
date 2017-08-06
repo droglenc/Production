@@ -236,14 +236,18 @@ min.len.age3 <- lencat(min(la$len.in[la$age==3],na.rm=TRUE),w=0.5)
 # ======================================================================
 # Read and prep the FMDB data file
 ## Selected only needed columns, renamed those columns
+## Added WBIC_YEAR and mon(th) variables
 fmdb <- read.csv("data/original/raw_data_walleye_20170803.csv",
                  stringsAsFactors=FALSE,na.strings=c("-","NA",""))
 log <- c(log,paste("Loaded walleye FMDB file with",ncol(fmdb),
                    "variables and",nrow(fmdb),"records."))
-fmdb %<>% select(WBIC,SURVEY_YEAR,FISH_LENGTH_OR_LOWER_IN_AMT,
-                 FISH_LEN_UPPER_IN_AMT,FISH_COUNT_AMT,SEX_TYPE) %>%
-  rename(wbic=WBIC,year=SURVEY_YEAR,sex=SEX_TYPE) %>%
-  mutate(wbic_year=paste(wbic,year,sep="_"))
+fmdb %<>% select(WBIC,SURVEY_YEAR,SAMPLE_DATE,FISH_LENGTH_OR_LOWER_IN_AMT,
+                 FISH_LEN_UPPER_IN_AMT,FISH_COUNT_AMT,SEX_TYPE,
+                 GR_TY_SHRT_NAME) %>%
+  rename(wbic=WBIC,year=SURVEY_YEAR,mon=SAMPLE_DATE,
+         sex=SEX_TYPE,gear=GR_TY_SHRT_NAME) %>%
+  mutate(wbic_year=paste(wbic,year,sep="_"),
+         mon=format(as.Date(mon),"%b"))
 ## Reduced to only WBIC_YEARs for which we have a PE
 log <- c(log,paste("This file originally had",
                    length(unique(fmdb$wbic_year)),"WBIC_YEARs"))
@@ -291,7 +295,7 @@ log <- c(log,tmp[-5])
 ## Added a length in mm variable
 ## Rearranged the columns and sorted the rows by wbic, year, and length
 fmdb %<>% mutate(len.mm=len.in*25.4) %>%
-  select(wbic_year,wbic,year,len.in,len.mm,sex,lennote) %>%
+  select(wbic_year,wbic,year,mon,gear,len.in,len.mm,sex,lennote) %>%
   arrange(wbic,year,len.mm)
 ## WBIC_YEAR = "1018500_2003" had three large fish where the len.in
 ## was clearly mm. This corrects that for those three fish.
