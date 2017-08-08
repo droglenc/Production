@@ -56,6 +56,7 @@ knitr::opts_chunk$set(echo = TRUE)
     1. Sample size was above some minimum threshold. **Currently set at 30.**
     1. The number of ages in the ALK was above some minimum threshold. **Currently set at 5.**
     1. The number of length categories in the ALK was above some minimum threshold. **Currently set at 5 (i.e., using 20-mm length classes this ensure a range of at least 100 mm).**
+    1. There were several gaps in age-classes and the number of consecutive age-classes was small. **Currently set at 3 or more age gaps and 4 or fewer consecutive age-classes.** 
     1. The smoothed ALK could not be fit (see above). It was assumed that if the smoothed ALK could not be fit that there were likely issues with the empirical ALK as well and, thus, both were deemed to not be "valid."
 1. Output a data file (`ALKInfo.csv`) that contained information about each ALK. This is used in `calcPB_loop` so that the ALKs do not have to be constructed each time.
     a. Note that a script for simple exploratory summaries of the ALK results is in the scratch\ folder.
