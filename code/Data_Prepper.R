@@ -29,19 +29,19 @@ writePreppedFiles <- TRUE
 
 # ======================================================================
 # Setup
-##  Load required packages
-library(FSA)
-library(plyr)
-library(dplyr)
-library(magrittr)
+## Load required packages
+library(FSA); library(plyr); library(dplyr); library(magrittr)
+## Load local helper files
+source("code/helpers/productionHelpers.R")
 ## Initialize log variable
 log <- c(paste0("Ran Data Prepper to create new prepped files on ",
                 date(),".","\n","\n"))
 ## Set the random number seed. Expanding the lengths of the fish
 ## generates a random length between the lower and upper lengths of the
 ## length bin. This help keep some constancy in that randomization.
-set.seed(82340934)
-
+tmp <- 82340934
+set.seed(tmp)
+log <- c(log,paste("Random seed was set to",tmp,".\n\n"))
 
 
 
@@ -95,22 +95,25 @@ wbicInfo <- read.csv("data/original/ROW.csv")
 log <- c(log,paste("Loaded ROW file with",ncol(wbicInfo),"variables and",
                    nrow(wbicInfo),"records."))
 wbicInfo %<>% filterD(WBIC %in% wbics) %>%
-  select(WBIC,OFFICIAL_NAME,WATERBODY_TYPE_DESC,MEAN_DEPTH_FT) %>%
+  select(WBIC,OFFICIAL_NAME,WATERBODY_TYPE_DESC,OFFICIAL_SIZE_ACRES,
+         MEAN_DEPTH_FT,MAX_DEPTH_FT,LL_LAT_DD_AMT,LL_LONG_DD_AMT) %>%
   rename(wbic=WBIC,name=OFFICIAL_NAME,wb_type=WATERBODY_TYPE_DESC,
-         mean_depth=MEAN_DEPTH_FT) %>%
-  mutate(mean_depth=mean_depth*0.3048)
+         size=OFFICIAL_SIZE_ACRES,mean_depth=MEAN_DEPTH_FT,
+         max_depth=MAX_DEPTH_FT,lat=LL_LAT_DD_AMT,long=LL_LONG_DD_AMT) %>%
+  mutate(mean_depth=round(mean_depth*0.3048,1),
+         max_depth=round(max_depth*0.3048,1),
+         size=round(size*0.404686,1))
 headtail(wbicInfo)
 
 ## Read AR's lake classifications
 ## Selected only needed columns, renamed those columns
 ## Made lake class names simpler
-wbicInfo2 <- read.csv("data/original/Supplementary Dataset 8 - Final Lake Class List.csv",stringsAsFactors=FALSE)
+wbicInfo2 <- read.csv("data/original/Supplementary Dataset 8 - Final Lake Class List.csv",
+                      stringsAsFactors=FALSE)
 log <- c(log,paste("Loaded Rypel's Lake Class List file with",
                    ncol(wbicInfo2),"variables and",nrow(wbicInfo2),"records."))
-wbicInfo2 %<>% select(WBIC,County,Area..ha.,Max.Depth..m.,
-                      Latitude,Longitude,Final.Lake.Class) %>%
-  rename(wbic=WBIC,county=County,size=Area..ha.,max_depth=Max.Depth..m.,
-         lat=Latitude,long=Longitude,class=Final.Lake.Class) %>%
+wbicInfo2 %<>% select(WBIC,County,Final.Lake.Class) %>%
+  rename(wbic=WBIC,county=County,class=Final.Lake.Class) %>%
   mutate(class=mapvalues(class,
                          from=c("Complex - Cool - Clear","Complex - Cool - Dark",
                                 "Complex - Riverine","Complex - Two Story",
@@ -124,7 +127,8 @@ wbicInfo2 %<>% select(WBIC,County,Area..ha.,Max.Depth..m.,
                               "SHF","SHN","SR","STP","S2S","SWC","SWD")))
 headtail(wbicInfo2)
 
-## Joined the county names and lake class variables to the ROW file
+## Joined the county names, lake class, size, depths, and coordinate
+## variables from AR's lake class file to the ROW file
 ## Rearranged columns and ordered rows by WBIC
 wbicInfo <- plyr::join(wbicInfo,wbicInfo2,by="wbic") %>%
   select(wbic,name,county,class,wb_type,lat,long,size,max_depth,mean_depth) %>%
@@ -140,14 +144,9 @@ headtail(wbicInfo)
 ## available in the online lakes finder (addresses some later issues)
 #### For Patten Lake
 wbicInfo$county[wbicInfo$wbic==653700] <- "Florence"
-wbicInfo$size[wbicInfo$wbic==653700] <- 254*0.404686
-wbicInfo$lat[wbicInfo$wbic==653700] <- 45.85417480
-wbicInfo$long[wbicInfo$wbic==653700] <- -88.41985940
 #### For Plum Lake
 wbicInfo$county[wbicInfo$wbic==2963200] <- "Vilas"
-wbicInfo$size[wbicInfo$wbic==2963200] <- 225.19*0.404686
-wbicInfo$lat[wbicInfo$wbic==2963200] <- 46.22133830
-wbicInfo$long[wbicInfo$wbic==2963200] <-  -89.50435070
+#### Note that the county for Pike Chain of Lakes is still NA
 
 ## Write out the file ... wbicInfo.csv
 if (writePreppedFiles) {
@@ -281,11 +280,18 @@ fmdb %<>% select(WBIC,SURVEY_YEAR,SAMPLE_DATE,FISH_LENGTH_OR_LOWER_IN_AMT,
                              "unknown","other","other","other","other","other",
                              "other","other","other","other","other")))
 ## Reduced to only WBIC_YEARs for which we have a PE
-log <- c(log,paste("This file originally had",
-                   length(unique(fmdb$wbic_year)),"WBIC_YEARs"))
-fmdb %<>% filterD(wbic_year %in% wbic_years) %>%
-  filterD(gear=="fykenet",mon %in% c("Mar","Apr","May"))
-log <- c(log,paste(length(unique(fmdb$wbic_year)),
+wys_fmdb <- unique(fmdb$wbic_year)
+log <- c(log,paste("There were originally",length(wys_fmdb),"WBIC_YEARs."))
+fmdb %<>% filterD(wbic_year %in% wbic_years)
+wys_fmdb <- unique(fmdb$wbic_year)
+log <- c(log,paste(length(wys_fmdb),"WBIC_YEARs remaining after matching with PEs."))
+fmdb%<>% filterD(gear=="fykenet",mon %in% c("Mar","Apr","May"))
+tmp <- unique(fmdb$wbic_year)
+log <- c(log,paste("Deleted",length(wys_fmdb)-length(tmp),
+                   "WBIC_YEARs after reducing to fyke nets in spring."))
+log <- handleLostWBIC_YEARs(log,wys_fmdb,fmdb)
+wys_fmdb <- unique(fmdb$wbic_year)
+log <- c(log,paste("Thus,",length(wys_fmdb),
          "WBIC_YEARs remained after matching with PEs and reducing to fyke nets in spring."))
 ## Handling database errors or issues (per AR e-mail 1-Aug-17)
 ## Don't use filterD() because it removes NAs which causes issues!!!!!
@@ -293,15 +299,21 @@ log <- c(log,paste(length(unique(fmdb$wbic_year)),
 rows2delete <- which(fmdb$FISH_COUNT_AMT>0 & is.na(fmdb$FISH_LENGTH_OR_LOWER_IN_AMT))
 if (length(rows2delete)>0) fmdb <- fmdb[-rows2delete,]
 log <- c(log,paste("Deleted",length(rows2delete),"rows with fish but no length."))
+log <- handleLostWBIC_YEARs(log,wys_fmdb,fmdb)
+wys_fmdb <- unique(fmdb$wbic_year)
 ## Removed rows with "lower" length greater than "upper" length
 rows2delete <- which(fmdb$FISH_LENGTH_OR_LOWER_IN_AMT>fmdb$FISH_LEN_UPPER_IN_AMT)
 if (length(rows2delete)>0) fmdb <- fmdb[-rows2delete,]
 log <- c(log,paste("Deleted",length(rows2delete),
                    "rows with lower length > upper length."))
+log <- handleLostWBIC_YEARs(log,wys_fmdb,fmdb)
+wys_fmdb <- unique(fmdb$wbic_year)
 ### Removed rows with negative lengths
 rows2delete <- which(fmdb$FISH_LENGTH_OR_LOWER_IN_AMT<0 | fmdb$FISH_LEN_UPPER_IN_AMT<0)
 if (length(rows2delete)>0) fmdb <- fmdb[-rows2delete,]
 log <- c(log,paste("Deleted",length(rows2delete),"rows with negative lengths."))
+log <- handleLostWBIC_YEARs(log,wys_fmdb,fmdb)
+wys_fmdb <- unique(fmdb$wbic_year)
 ## Removed rows where a number of fish is given, but the lower length
 ## is zero and the upper length is positive. I think this is for fish
 ## that were counted as less than the upper length. Two of the upper
@@ -314,6 +326,8 @@ rows2delete <- which(fmdb$FISH_LENGTH_OR_LOWER_IN_AMT==0 &
 if (length(rows2delete)>0) fmdb <- fmdb[-rows2delete,]
 log <- c(log,paste("Deleted",length(rows2delete),
                    "rows from the FMDB in a 'small fish' bin."))
+log <- handleLostWBIC_YEARs(log,wys_fmdb,fmdb)
+wys_fmdb <- unique(fmdb$wbic_year)
 ## If no or zero numbers of fish but there are lengths then assume
 ## there is one fish.
 fmdb$FISH_COUNT_AMT[is.na(fmdb$FISH_COUNT_AMT) & 
@@ -341,7 +355,9 @@ fmdb$len.mm[rows2correct] <- fmdb$len.mm[rows2correct]/25.4
 rows2delete <- which(fmdb$len.in>40)
 if (length(rows2delete)>0) fmdb <- fmdb[-rows2delete,]
 log <- c(log,paste("Deleted",length(rows2delete),"rows with a len.in >40."))
-## Remove fish that are shorter than the minimum length of age-3 fish
+log <- handleLostWBIC_YEARs(log,wys_fmdb,fmdb)
+wys_fmdb <- unique(fmdb$wbic_year)
+## Removed fish that are shorter than the minimum length of age-3 fish
 ## We are ultimately going to limit the data to age-3 fish, so no need
 ## to keep fish with lengths that will never become age 3.
 rows2delete <- which(fmdb$len.in<min.len.age3)
@@ -349,10 +365,14 @@ if (length(rows2delete)>0) fmdb <- fmdb[-rows2delete,]
 log <- c(log,paste0("Deleted ",length(rows2delete),
                     " rows with a len.in less than the minimum length of age-3 fish (",
                     min.len.age3,")."))
+log <- handleLostWBIC_YEARs(log,wys_fmdb,fmdb)
+wys_fmdb <- unique(fmdb$wbic_year)
 ## Still some fish with no lengths ... remove these
 rows2delete <- which(is.na(fmdb$len.mm))
 if (length(rows2delete)>0) fmdb <- fmdb[-rows2delete,]
 log <- c(log,paste("Deleted",length(rows2delete),"rows without a len.mm."))
+log <- handleLostWBIC_YEARs(log,wys_fmdb,fmdb)
+wys_fmdb <- unique(fmdb$wbic_year)
 ## Join on the county and lake class variables
 ##   Note that only 3 vars are kept in wbicInfo so that only county
 ##     and class (and not mean_depth, etc.) will be added
