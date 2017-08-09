@@ -26,12 +26,12 @@ n.cut <- 30
 ## Minimum number of ages in sample when computing P & B
 ages.cut <- 5
 ## Type of ALK to use ("empirical" or "smoothed")
-alk2use <- "empirical"
+alk2use <- "smoothed"
 ## Assign individual weights (TRUE) or est. mean weight from mean length
 useIndivWeights <- TRUE
-## An optional name to add as a suffix to the results file
-## Use to keep results separate based on choices made above
-results.suffix <- NULL
+## An optional name to add as a suffix to the results file. Use to keep
+## results separate based on choices made above. Use NULL for no suffix.
+results.suffix <- "SM_IW"
 
 
 # ======================================================================
@@ -62,6 +62,8 @@ if (useIndivWeights) {
     n[i] <- nrow(fmdb_1)
     # Get number of ages present
     numAges[i] <- length(unique(fmdb_1$age))
+    # Get minimum length
+    minLen[i] <- min(fmdb_1$len.mm)
     # Calculate P and B (if more than one age-class)
     ## get number and mean weight (kg) in each age-class
     ## expand number in sample to number in popn (with PE value)
@@ -73,7 +75,7 @@ if (useIndivWeights) {
         mutate(pnum=snum/sum(snum)*PE[i],twt=pnum*mwt) %>%
         calcPB(age.c="age",num.c="pnum",twt.c="twt",area=HA[i],adjAgeGaps=TRUE)
       P[i] <- sum_1$PperA; B[i] <- sum_1$BperA
-      ## get some characteristics of ages present
+      # get some characteristics of ages present
       minAge[i] <- min(sum_1$df$age); maxAge[i] <- max(sum_1$df$age)
       ## Number of gaps in ages (e.g., 8 and 10, but not no 9)
       tmp <- diff(sum_1$df$age)
@@ -89,8 +91,12 @@ if (useIndivWeights) {
       tmp <- split(sum_1$df$age,cumsum(c(TRUE,diff(sum_1$df$age)!=1)))
       tmp <- tmp[[which.max(sapply(tmp,length))]]
       minAgeR[i] <- min(tmp); maxAgeR[i] <- max(tmp)
+      # How many age-class Ps were negative
+      numNegP[i] <- sum(sum_1$df$P<0,na.rm=TRUE)
       ## Write out the calculation table so it can be examined later
-      write.csv(sum_1$df,paste0("results/CalcPB_Tables/PB_",
+      write.csv(sum_1$df,paste0("results/CalcPB_Tables/PB",
+                                ifelse(is.null(results.suffix),"","_"),
+                                results.suffix,
                                 ifelse(is.null(results.suffix),"","_"),
                                 wys[i],".csv"),quote=FALSE,row.names=FALSE)
     } else P[i] <- B[i] <- NA
@@ -108,9 +114,10 @@ if (useIndivWeights) {
     alk.src[i] <- tmp$which; alk.type[i] <- tmp$type; alk.note[i] <- tmp$note
     # Get overall sample size
     n[i] <- nrow(fmdb_1)
-    # Get number of ages present, minimum and maximum ages
+    # Get number of ages present
     numAges[i] <- length(unique(fmdb_1$age))
-    minAge[i] <- min(fmdb_1$age); maxAge[i] <- max(fmdb_1$age)
+    # Get minimum length
+    minLen[i] <- min(fmdb_1$len.mm)
     # Calculate P and B (if more than one age-class)
     ## get number and mean weight (kg) in each age-class
     ## expand number in sample to number in popn (with PE value)
@@ -128,7 +135,7 @@ if (useIndivWeights) {
         mutate(pnum=snum/sum(snum)*PE[i],twt=pnum*mwt) %>%
         calcPB(age.c="age",num.c="pnum",twt.c="twt",area=HA[i],adjAgeGaps=TRUE)
       P[i] <- sum_1$PperA; B[i] <- sum_1$BperA
-      ## get some characteristics of ages present
+      # get some characteristics of ages present
       minAge[i] <- min(sum_1$df$age); maxAge[i] <- max(sum_1$df$age)
       ## Number of gaps in ages (e.g., 8 and 10, but not no 9)
       tmp <- diff(sum_1$df$age)
@@ -144,8 +151,12 @@ if (useIndivWeights) {
       tmp <- split(sum_1$df$age,cumsum(c(TRUE,diff(sum_1$df$age)!=1)))
       tmp <- tmp[[which.max(sapply(tmp,length))]]
       minAgeR[i] <- min(tmp); maxAgeR[i] <- max(tmp)
+      ## How many age-class Ps were negative
+      numNegP[i] <- sum(sum_1$df$P<0,na.rm=TRUE)
       ## Write out the calculation table so it can be examined later
-      write.csv(sum_1$df,paste0("results/CalcPB_Tables/PB_",
+      write.csv(sum_1$df,paste0("results/CalcPB_Tables/PB2",
+                                ifelse(is.null(results.suffix),"","_"),
+                                results.suffix,
                                 ifelse(is.null(results.suffix),"","_"),
                                 wys[i],".csv"),quote=FALSE,row.names=FALSE)
     } else P[i] <- B[i] <- NA
@@ -157,10 +168,10 @@ if (useIndivWeights) {
 # Put Results together
 split.wy <- do.call(rbind,strsplit(wys,"_"))
 PB_res <- data.frame(wbic_year=wys,wbic=split.wy[,1],year=split.wy[,2],
-                     n,numAges,minAge,maxAge,
+                     n,minLen,numAges,minAge,maxAge,
                      numAgeGaps,maxMissingAges,maxMissingAgeAtEnd,
                      minAgeR,maxAgeR,
-                     PE,HA,P,B,
+                     PE,HA,P,B,numNegP,
                      reg.type,reg.src,alk.type,alk.src,alk.note)
 ## Add use and reason variables
 PB_res %<>% mutate(use=case_when(n<n.cut ~ "NO",
@@ -175,6 +186,5 @@ PB_res %<>% mutate(use=case_when(n<n.cut ~ "NO",
 
 # ======================================================================
 ## Write the file out to the results folder with a time stamp in name
-write.csv(PB_res,paste0("results/PB",
-                        ifelse(is.null(results.suffix),"","_"),".csv"),
-          quote=FALSE,row.names=FALSE)
+write.csv(PB_res,paste0("results/PB",ifelse(is.null(results.suffix),"","_"),
+                        results.suffix,".csv"),quote=FALSE,row.names=FALSE)
