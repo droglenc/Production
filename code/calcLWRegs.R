@@ -32,26 +32,7 @@ library(FSA)
 library(dplyr)
 library(magrittr)
 library(nlme)
-## A new function to extract some information from the lists returned
-## by lmList that contains each length-weight regression by group
-LWINFO <- function(lms,type) {
-  ##  Got summary of each regression ... this is a BIG list
-  tmp <- lapply(lms,summary)
-  ##  Got model.frame for each regression ... to get min and max len below
-  tmp2 <- sapply(lapply(lms,model.frame),'[[','logl')
-  ##  Extracted coefficients, r-squared, and sample size (df_reg+2)
-  ##  Renamed coefficients
-  res <- data.frame(coef(lms),rsq=sapply(tmp,'[[','r.squared'),
-                    n=sapply(tmp,'[[','df')[2,]+2,
-                    minLen=exp(sapply(tmp2,min)),
-                    maxLen=exp(sapply(tmp2,max))) %>%
-    rename(loga=X.Intercept.,b=logl)
-  ##  Added 'which' variable that lists the group/level for the regression
-  ##  Added 'type' variable for level of regression (e.g., at WBIC_YEAR)
-  res %<>% mutate(which=rownames(res),type=type)
-  res
-}
-
+source("code/helpers/productionHelpers.R")
 
 # ======================================================================
 # Load length-weight data
