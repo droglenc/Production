@@ -11,6 +11,8 @@
 
 # data files
 data/
+scratch/Compare2DaisukeResults_*
+
 scratch/zzzOld_FromDaisuke/
 
 # Other

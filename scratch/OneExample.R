@@ -10,9 +10,9 @@ source("code/helpers/productionHelpers.R")
 # ======================================================================
 # Analysis choices that can be made (at this stage)
 ## Type of ALK to use ("empirical" or "smoothed")
-alk2use <- "smoothed"
+alk2use <- "empirical"
 ## WBIC_YEAR
-WBIC_YEAR <- "2962400_2009"
+WBIC_YEAR <- "608400_2013"
 
 # ======================================================================
 # Load the data.frames and do initial wranglings
