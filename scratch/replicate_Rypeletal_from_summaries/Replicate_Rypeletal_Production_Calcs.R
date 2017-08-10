@@ -1,5 +1,5 @@
 library(dplyr)
-source("code/calcPB_function.R")
+source("code/helpers/calcPB.R")
 
 ## CJFAS2 ... Tenderfoot Lake example ... data from Rypel's Excel Sheet1
 TLha <- 176.848
@@ -14,10 +14,11 @@ TLdf <- data.frame(age=3:12,
 TLdf <- mutate(TLdf,num=TLpe*ppop,twt=num*mwt)
 TLdf
 
-TLres <- calcPB(TLdf,area=TLha,age.c="age",num.c="num",twt.c="twt")
+TLres <- calcPB(TLdf,age.c="age",num.c="num",twt.c="twt",
+                area=TLha,lbl="Tenderfoot Example")
 TLres$df
-TLres$BperA  # 20.61249
-TLres$PperA  #  4.907816
+TLres$B  # 20.61249
+TLres$P  #  4.907816
 # Matches Rypel's Excel sheet exactly
 
 
@@ -30,40 +31,9 @@ ELdf <- data.frame(age=c(0,3:15,18),
                          120.6657629,194.1304121,45.71067112,12.83364195,
                          13.53191397,13.76769242,15.62439983))
 
-ELres <- calcPB(ELdf,area=ELha,age.c="age",num.c="num",twt.c="twt")
+ELres <- calcPB(ELdf,age.c="age",num.c="num",twt.c="twt",
+                area=ELha,lbl="Escanaba Lake Example")
 ELres$df
-ELres$BperA  # 27.00323
-ELres$PperA  #  6.07475
+ELres$B  # 27.00323
+ELres$P  #  6.07475
 # Matches Rypel's Excel sheet exactly
-
-
-
-# test names
-ELdf2 <- ELdf
-names(ELdf2) <- c("AGES","ABUNDANCE","BIOMASS")
-ELres2 <- calcPB(ELdf2,area=ELha,age.c="AGES",num.c="ABUNDANCE",twt.c="BIOMASS")
-ELres2$df
-
-
-
-#### Hand Calculations ... learning before writing calcPB()
-CJdf2 <- CJdf %>%
-  mutate(mwt=twt/num,log.mwt=log(mwt),B=twt/CJha,
-         mult=c(NA,rep(1,length(age)-1)),
-         mB=zoo::rollmean(B,k=2,na.pad=TRUE,align="right")/mult,
-         G=c(NA,diff(log.mwt)),
-         P=mB*G)
-CJdf2
-( CJ.P <- sum(CJdf2$P,na.rm=TRUE) )
-( CJ.B <- sum(CJdf2$B,na.rm=TRUE) )
-
-
-ELdf2 <- ELdf %>%
-  mutate(mwt=twt/num,log.mwt=log(mwt),B=twt/ELha,
-         mult=c(NA,3,rep(1,length(age)-3),3),
-         mB=zoo::rollmean(B,k=2,na.pad=TRUE,align="right")/mult,
-         G=c(NA,diff(log.mwt)),
-         P=mB*G)
-ELdf2
-( EL.P <- sum(ELdf2$P,na.rm=TRUE) )
-( EL.B <- sum(ELdf2$B,na.rm=TRUE) )
