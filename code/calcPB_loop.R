@@ -32,6 +32,9 @@ useIndivWeights <- TRUE
 ## An optional name to add as a suffix to the results file. Use to keep
 ## results separate based on choices made above. Use NULL for no suffix.
 results.suffix <- "SM_IW"
+## Summary plots of PB calculations can be made, but this slows the loop
+## considerably. Perhaps turn this off until near final run.
+makeSumPlots <- FALSE
 
 
 # ======================================================================
@@ -73,8 +76,9 @@ if (useIndivWeights) {
       sum_1 <- group_by(fmdb_1,age) %>%
         summarize(snum=n(),mwt=mean(wt)/1000) %>%
         mutate(pnum=snum/sum(snum)*PE[i],twt=pnum*mwt) %>%
-        calcPB(age.c="age",num.c="pnum",twt.c="twt",area=HA[i],adjAgeGaps=TRUE)
-      P[i] <- sum_1$PperA; B[i] <- sum_1$BperA
+        calcPB(age.c="age",num.c="pnum",twt.c="twt",
+               area=HA[i],adjAgeGaps=TRUE,lbl=wys[i])
+      P[i] <- sum_1$P; B[i] <- sum_1$B
       # get some characteristics of ages present
       minAge[i] <- min(sum_1$df$age); maxAge[i] <- max(sum_1$df$age)
       ## Number of gaps in ages (e.g., 8 and 10, but not no 9)
@@ -99,6 +103,16 @@ if (useIndivWeights) {
                                 results.suffix,
                                 ifelse(is.null(results.suffix),"","_"),
                                 wys[i],".csv"),quote=FALSE,row.names=FALSE)
+      ## Also put out a summary graphic (if asked for ... very slow)
+      if (makeSumPlots) {
+        jpeg(paste0("results/CalcPB_Graphs/PB",
+                    ifelse(is.null(results.suffix),"","_"),
+                    results.suffix,
+                    ifelse(is.null(results.suffix),"","_"),
+                    wys[i],".jpg"),width=3*480,res=144)
+        plot(sum_1)
+        dev.off() 
+      }
     } else P[i] <- B[i] <- NA
   }
 } else { ## compute mean weights from mean lengths-at-age
@@ -133,8 +147,9 @@ if (useIndivWeights) {
         select(-wbic_year,-wbic,-year,-class) %>%
         mutate(mwt=mwt/1000) %>%
         mutate(pnum=snum/sum(snum)*PE[i],twt=pnum*mwt) %>%
-        calcPB(age.c="age",num.c="pnum",twt.c="twt",area=HA[i],adjAgeGaps=TRUE)
-      P[i] <- sum_1$PperA; B[i] <- sum_1$BperA
+        calcPB(age.c="age",num.c="pnum",twt.c="twt",area=HA[i],
+               adjAgeGaps=TRUE,lbl=wys[i])
+      P[i] <- sum_1$P; B[i] <- sum_1$B
       # get some characteristics of ages present
       minAge[i] <- min(sum_1$df$age); maxAge[i] <- max(sum_1$df$age)
       ## Number of gaps in ages (e.g., 8 and 10, but not no 9)
