@@ -60,10 +60,14 @@ if (nrow(fmdb_1)>1) {
   sum_1 <- group_by(fmdb_1,age) %>%
     summarize(snum=n(),mwt=mean(wt)/1000) %>%
     mutate(pnum=snum/sum(snum)*PE,twt=pnum*mwt) %>%
-    calcPB(age.c="age",num.c="pnum",twt.c="twt",area=HA,adjAgeGaps=TRUE)
-  P <- sum_1$PperA
-  B <- sum_1$BperA
+    calcPB(age.c="age",num.c="pnum",twt.c="twt",
+           area=HA,adjAgeGaps=TRUE,lbl=WBIC_YEAR)
+  P <- sum_1$P
+  B <- sum_1$B
 } else P <- B <- NA
 P
 B
 round(sum_1$df,2)
+
+windows(10.5,3.5)
+plot(sum_1)
