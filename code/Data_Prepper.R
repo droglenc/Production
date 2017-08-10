@@ -21,7 +21,7 @@ rm(list=ls()); cat("\014")
 # message will be printed at the end of the script that indicates if the
 # log has changed from the immediately previous version. If there are 
 # changes you should assure yourself that that was expected.
-writePreppedFiles <- TRUE
+writePreppedFiles <- FALSE
 # ======================================================================
 # ######################################################################
 

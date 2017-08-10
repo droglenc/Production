@@ -8,89 +8,169 @@ output:
     fig_width: 3.5
 ---
 
-```{r setup, echo=FALSE, message=FALSE, warning=FALSE}
+```{r setup, echo=FALSE, message=FALSE, warning=FALSE, results="hide"}
 knitr::opts_chunk$set(echo=TRUE,comment="")
 library(FSA)
 library(dplyr)
 library(magrittr)
 library(readxl)
 library(plotrix)
+library(xtable)
 library(captioner)
 figs <- captioner("Figure")
+tabs <- captioner("Table")
 source("../code/helpers/productionHelpers.R")
 ```
 
 
-## Initial Comparison (to Daisuke's Compiled Results)
-```{r readResults, echo=FALSE}
-## Need to set working directory to source file if analyzing "on-the-fly"
+```{r loadData, echo=FALSE, cache=TRUE}
+## !!NOTE!! Set working directory to source file to analyze "on-the-fly"
+#setwd("C:/aaaWork/Research/Production/scratch")
+
+# Daisuke's Files
+## His overall P/B results
 DGres <- read_excel("zzzOld_FromDaisuke/Daisuke Production Estimates.xlsx") %>%
   rename(wbic=WBIC,year=Year,wbic_year=WBIC_Year,P="P (kg/ha/y)",B="B (kg/ha)") %>%
   mutate(PB=P/B) %<>%
   select(wbic_year,wbic,year,P,B,PB)
-WYs_DG <- unique(DGres$wbic_year)
+## His PE and lake sizes
+### Get PEs and sizes by isolating them from WIwalleye_len_pe.csv
+### Converted size from m^2 to HA, round to 1 decimal to match our results
+DGPEHA <- read.csv("zzzOld_FromDaisuke/WIwalleye_len_pe.csv",
+                   stringsAsFactors=FALSE) %>%
+  mutate(wbic_year=paste(wbic,year,sep="_"),
+         HA=round(LakeArea/10000,1)) %>%
+  rename(PE=pe) %>%
+  select(wbic_year,wbic,year,PE,HA) %>%
+  unique()
+## His length-weight data
+DGLW <- read.csv("zzzOld_FromDaisuke/WIwalleye_len-mass.csv",
+                 stringsAsFactors=FALSE) %>%
+  mutate(logw=log(mass),logl=log(length))
+## His length-age data
+DGLA <- read.csv("zzzOld_FromDaisuke/WIwalleye_age_len.csv",
+                 stringsAsFactors=FALSE) %>%
+  rename(len.mm=length) %>%
+  select(wbic_year,wbic,year,len.mm,age) %>%
+  filterD(!is.na(len.mm),!is.na(age))
+## His lengths (used to expand for ages and weights)
+DGLENS <- read.csv("zzzOld_FromDaisuke/WIwalleye_len_pe.csv",
+                    stringsAsFactors=FALSE) %>%
+  mutate(wbic_year=paste(wbic,year,sep="_")) %>%
+  rename(len.mm=length) %>%
+  select(wbic_year,len.mm)
 
-DOres <- read.csv("../results/PB_SM_IW.csv",stringsAsFactors=FALSE) %>%
+# Our Files
+## Our overall P/B results ... before deleting invalid estimates
+DOres1 <- read.csv("../results/PB_SM_IW.csv",stringsAsFactors=FALSE) %>%
   mutate(PB=P/B)
-WYs_DO1 <- unique(DOres$wbic_year)
-DOres %<>% filterD(use=="yes")
+## Our overall P/B results ... after deleting invalid estimates
+DOres <- filterD(DOres1,use=="yes")
+## Our PEs
+DOPE <- read.csv("../data/prepped/PE.csv",stringsAsFactors=FALSE)
+## Our original FMDB file
+DOFMDBo <- read.csv("../data/original/raw_data_walleye_20170803.csv",
+                    stringsAsFactors=FALSE,na.strings=c("-","NA","")) %>%
+  mutate(wbic_year=paste(WBIC,SURVEY_YEAR,sep="_"))
+## Our prepped FMDB file
+DOFMDBp <- read.csv("../data/prepped/fmdb_wae.csv",
+                    stringsAsFactors=FALSE)
+## Our length-weight results
+DOLWres <- read.csv("../data/prepped/LWregs.csv",stringsAsFactors=FALSE) %>%
+  filterD(type=="WBIC_YEAR") %>%
+  select(loga,b,n,rsq,which)
+## Our original age-length data
+DOLAo <- read.csv("../data/original/length_weight_age_raw_data_8_1_17.csv",
+                  stringsAsFactors=FALSE,na.strings=c("-","NA","")) %>%
+  rename(wbic=WBIC,year=Survey.Year,len.mm=Length.MM,len.in=Length.IN,
+         age=Age..observed.annuli.) %>%
+  mutate(wbic_year=paste(wbic,year,sep="_"),
+         len.mm=len.in*25.4,
+         age=as.numeric(age))%>%
+  select(wbic_year,wbic,year,len.mm,age) %>%
+  filterD(!is.na(len.mm),!is.na(age))
+
+
+```
+
+
+
+## Initial Comparison (to Daisuke's Compiled Results)
+```{r compWYs, echo=FALSE, results="hide"}
+# WBIC_YEARs in Daisuke's overall results
+WYs_DG <- unique(DGres$wbic_year)
+# WBIC_YEARs in our results prioring to deleting invalid estimates
+WYs_DO1 <- unique(DOres1$wbic_year)
+# WBIC_YEARs that we considered to be invalid
+invalidWYs_DO <- unique(filterD(DOres1,use=="NO")$wbic_year)
+# WBIC_YEARs in our results after deleting invalid estimates
 WYs_DO <- unique(DOres$wbic_year)
 
+# Combined Daisuke's and our overall results
+## Find differences, percentage differences for B, P, and PB
 DODGres <- inner_join(DOres[,c("wbic_year","n","P","B","PB")],
                       DGres[,c("wbic_year","P","B","PB")],
                       by="wbic_year",suffix=c(".DO",".DG")) %>%
-  mutate(diffB=B.DG-B.DO,pdiffB=diffB/B.DO*100,diffBgt50=pdiffB>50,
-         diffP=P.DG-P.DO,pdiffP=diffP/P.DO*100,diffPgt50=pdiffP>50,
-         diffPB=PB.DG-PB.DO,pdiffPB=diffPB/PB.DO*100,diffPBgt50=pdiffPB>50)
+  mutate(diffB=B.DG-B.DO,pdiffB=diffB/B.DO*100,
+         diffP=P.DG-P.DO,pdiffP=diffP/P.DO*100,
+         diffPB=PB.DG-PB.DO,pdiffPB=diffPB/PB.DO*100)
+# WBIC_YEARs that both results had in common
 WYs_DODG <- unique(DODGres$wbic_year)
-```
 
-
-### WBIC_YEAR
-```{r wbicAnalysis, echo=FALSE, cache=TRUE}
-# WBIC_YEARs in Daisuke's but not our results
-DG_notin_DO <- WYs_DG[which(!(WYs_DG %in% WYs_DODG))]
+# WBIC_YEARs in Daisuke's but not our final results
+DG_notin_DO <- WYs_DG[!(WYs_DG %in% WYs_DO)]
+## This simply orders them by WBIC and then year ... easier to look at
+tmp <- do.call(rbind,strsplit(DG_notin_DO,"_"))
+DG_notin_DO <- data.frame(wbic_year=DG_notin_DO,wbic=as.numeric(tmp[,1]),
+                          year=as.numeric(tmp[,2]),stringsAsFactors=FALSE) %>%
+  arrange(wbic,year) %>% select(wbic_year)
+DG_notin_DO <- DG_notin_DO$wbic_year
 
 # Of Daisuke's WBIC_YEARs that we don't have, which don't have a PE for us
-PE <- read.csv("../data/prepped/PE.csv",stringsAsFactors=FALSE)
-WYs_PE <- unique(PE$wbic_year)
-DG_notin_PE <- DG_notin_DO[which(!(DG_notin_DO %in% WYs_PE))]
-
+WYs_DOPE <- unique(DOPE$wbic_year)
+DG_notin_DOPE <- DG_notin_DO[!(DG_notin_DO %in% WYs_DOPE)]
 # Of Daisuke's WBIC_YEARs that we don't have, which are not in the original FMDB file
-FMDBo <- read.csv("../data/original/raw_data_walleye_20170803.csv",stringsAsFactors=FALSE) %>%
-  mutate(wbic_year=paste(WBIC,SURVEY_YEAR,sep="_"))
-WYs_FMDBo <- unique(FMDBo$wbic_year)
-DG_notin_FMDBo <- DG_notin_DO[which(!(DG_notin_DO %in% WYs_FMDBo))]
-
+WYs_DOFMDBo <- unique(DOFMDBo$wbic_year)
+DG_notin_DOFMDBo <- DG_notin_DO[!(DG_notin_DO %in% WYs_DOFMDBo)]
 # Of Daisuke's WBIC_YEARs that we don't have, which are not in the prepped FMDB file
-FMDB <- read.csv("../data/prepped/fmdb_wae.csv",stringsAsFactors=FALSE)
-WYs_FMDB <- unique(FMDB$wbic_year)
-DG_notin_FMDB <- DG_notin_DO[which(!(DG_notin_DO %in% WYs_FMDB))]
+WYs_DOFMDBp <- unique(DOFMDBp$wbic_year)
+DG_notin_DOFMDBp <- DG_notin_DO[!(DG_notin_DO %in% WYs_DOFMDBp)]
+## Some of these were removed because no PE ... remove those from the list
+DG_notin_DOFMDBp <- DG_notin_DOFMDBp[!(DG_notin_DOFMDBp %in% DG_notin_DOPE)]
+# Of Daisuke's WBIC_YEARs that we don't have, how many did we consider to be invalid
+DG_in_invalid <- DG_notin_DO[DG_notin_DO %in% invalidWYs_DO]
+
+# Reasons that we considered the results to be invalid
+## rearranged to match sequential decision ladder
+invtab <- xtabs(~reason,data=DOres1[DOres1$wbic_year %in% DG_in_invalid,])
+invtab <- invtab[c("n<30","numAges<5","Age gaps issue")]
+tabs("InvTab","Frequency of WBIC_YEARs in Daisuke's analysis that were excluded from our results by the reason we considered the results to be invalid.")
 ```
 
-Daisuke's results used `r length(WYs_DG)` WBIC_YEARs. Our results, which included years after Daisuke's, had `r length(WYs_DO1)` WBIC_YEARs, but this was reduced to `r length(WYs_DO)` WBIC_YEARs when "invalid" estimates were excluded. Our results shared `r length(WYs_DODG)` WBIC_YEARs with Daisuke's results. Of the `r length(DG_notin_DO)` WBIC_YEARs in Daisuke's results that were not in our results, `r length(DG_notin_PE)` were not in our file of PEs, `r length(DG_notin_FMDBo)` were not in our original file of raw data from the FMDB, and `r length(DG_notin_FMDB)` were not in our prepped file of raw data from the FMDB. Thus, from our results, `r length(DG_notin_PE)` WBIC_YEARs were excluded because we did not have a PE and `r length(DG_notin_FMDB)` WBIC_YEARs were excluded because of choices we made when prepping the raw FMDB file (a review of the data prepper log suggests that all of these WBIC_YEARs were lost when we restricted the analysis to fish captured with fyke nets in the spring). The WBIC_YEARs in Daisuke's analysis that are not in our analysis are below.
+Daisuke's results used `r length(WYs_DG)` WBIC_YEARs. Our results, which included years after Daisuke's, had `r length(WYs_DO1)` WBIC_YEARs, but this was reduced to `r length(WYs_DO)` WBIC_YEARs when "invalid" estimates were excluded. Our results shared `r length(WYs_DODG)` WBIC_YEARs with Daisuke's results. Of the `r length(DG_notin_DO)` WBIC_YEARs in Daisuke's results that were not in our results, `r length(DG_notin_DOPE)` were not in our file of PEs, `r length(DG_notin_DOFMDBo)` were not in our original file of raw data from the FMDB, `r length(DG_notin_DOFMDBp)` were not in our prepped file of raw data from the FMDB, and `r length(DG_in_invalid)` were excluded because we considered the results to be invalid. A review of the data prepper log suggests that all of the WBIC_YEARs removed during data prepping occurred when the data were restricted to fish captured with fyke nets in the spring. `r tabs("InvTab",display="cite")` shows the reasons why we excluded the `r sum(invtab)` WBIC_YEARs in Daisuke's results that were not in our results. 
+
+`r tabs("InvTab")`
+
+```{r InvTab, echo=FALSE, results='asis'}
+print(xtable(data.frame(invtab)),include.rownames=FALSE,comment=FALSE)
+```
+
+WBIC_YEARs in Daisuke's results that were not in our results are listed below.
 ```{r echo=FALSE}
-# this splitting and the data.frame allows for sorting, which makes it
-# easier to find these issues in the data files.
-tmp <- do.call(rbind,strsplit(DG_notin_PE,"_"))
-tmp <- data.frame(wbic_year=DG_notin_PE,wbic=as.numeric(tmp[,1]),
-                  year=as.numeric(tmp[,2]),stringsAsFactors=FALSE) %>%
-  arrange(wbic,year)
 cat("WBIC_YEARs in Daisuke's results for which we do not have a PE.\n")
-tmp$wbic_year
-tmp <- do.call(rbind,strsplit(DG_notin_FMDB,"_"))
-tmp <- data.frame(wbic_year=DG_notin_FMDB,wbic=as.numeric(tmp[,1]),
-                  year=as.numeric(tmp[,2]),stringsAsFactors=FALSE) %>%
-  arrange(wbic,year)
+DG_notin_DOPE
 cat("WBIC_YEARs in Daisuke's results that were excluded in our prepping the FMDB file.\n")
-tmp$wbic_year
+DG_notin_DOFMDBp
+cat("WBIC_YEARs in Daisuke's results that we considered invalid.\n")
+DG_in_invalid
 ```
 
-
+\newpage
 
 ## Computation Results
+Comparisons of our results to Daisuke's results for B, P, and P/B are in `r figs("BComp",display="cite")`, `r figs("PComp",display="cite")`, and `r figs("PBComp",display="cite")`, respectively. Correlations between our and Daisuke's estimates are not as strong as I would have expected given that they originated from the same data (however, see the next section).
 
-```{r echo=FALSE, results="hide", out.width='0.33\\textwidth'}
+```{r BComp, echo=FALSE, results="hide", out.width='0.33\\textwidth'}
 par(mar=c(3,3,0.5,0.5),mgp=c(2.1,0.35,0),tcl=-0.2,las=1)
 figs("BComp","Daisuke's B (LEFT) and the percentage difference in B (MIDDLE and RIGHT) versus our B. Values that are more than 100% different are marked on the middle plot.")
 maxB <- with(DODGres,max(c(B.DG,B.DO)))+2
@@ -98,15 +178,16 @@ plot(B.DG~B.DO,data=DODGres,pch=19,col=col2rgbt("black",1/5),
      ylab="Daisuke's B",xlab="Our B",xlim=c(0,maxB),ylim=c(0,maxB))
 grid()
 abline(a=0,b=1,lty=2,col="red")
+text(25,0,paste0("r=",formatC(with(DODGres,cor(B.DG,B.DO)),format="f",digits=3)))
 plot(pdiffB~B.DO,data=DODGres,pch=19,col=col2rgbt("black",1/5),
-     ylab="Percent Difference in B",xlab="Our B")
+     ylab="Percent Difference (DG-DO) in B",xlab="Our B")
 grid()
 abline(h=0,lty=2,col="red")
 abline(h=c(-50,50),lty=3,col="red")
 badB <- which(abs(DODGres$pdiffB)>100)
 with(DODGres[badB,],text(B.DO,pdiffB,wbic_year,pos=4,cex=0.6))
 plot(pdiffB~B.DO,data=DODGres,pch=19,col=col2rgbt("black",1/5),
-     ylab="Percent Difference in B",xlab="Our B",ylim=c(-50,50))
+     ylab="Percent Difference (DG-DO) in B",xlab="Our B",ylim=c(-50,50))
 grid()
 abline(h=0,lty=2,col="red")
 abline(h=c(-50,50),lty=3,col="red")
@@ -123,15 +204,16 @@ plot(P.DG~P.DO,data=DODGres,pch=19,col=col2rgbt("black",1/5),
      ylab="Daisuke's P",xlab="Our P",xlim=c(0,maxP),ylim=c(0,maxP))
 grid()
 abline(a=0,b=1,lty=2,col="red")
+text(6,0,paste0("r=",formatC(with(DODGres,cor(P.DG,P.DO)),format="f",digits=3)))
 plot(pdiffP~P.DO,data=DODGres,pch=19,col=col2rgbt("black",1/5),
-     ylab="Percent Difference in P",xlab="Our P")
+     ylab="Percent Difference (DG-DO) in P",xlab="Our P")
 grid()
 abline(h=0,lty=2,col="red")
 abline(h=c(-50,50),lty=3,col="red")
 badP <- which(abs(DODGres$pdiffP)>200)
 with(DODGres[badP,],text(P.DO,pdiffP,wbic_year,pos=4,cex=0.6))
 plot(pdiffP~P.DO,data=DODGres,pch=19,col=col2rgbt("black",1/5),
-     ylab="Percent Difference in P",xlab="Our P",ylim=c(-100,200))
+     ylab="Percent Difference (DG-DO) in P",xlab="Our P",ylim=c(-100,200))
 grid()
 abline(h=0,lty=2,col="red")
 abline(h=c(-50,50),lty=3,col="red")
@@ -147,21 +229,34 @@ plot(PB.DG~PB.DO,data=DODGres,pch=19,col=col2rgbt("black",1/5),
      ylab="Daisuke's P/B",xlab="Our P/B",xlim=c(0,maxPB),ylim=c(0,maxPB))
 grid()
 abline(a=0,b=1,lty=2,col="red")
+text(0.35,0,paste0("r=",formatC(with(DODGres,cor(PB.DG,PB.DO)),format="f",digits=3)))
 plot(pdiffPB~PB.DO,data=DODGres,pch=19,col=col2rgbt("black",1/5),
-     ylab="Percent Difference in P/B",xlab="Our P/B")
+     ylab="Percent Difference (DG-DO) in P/B",xlab="Our P/B")
 grid()
 abline(h=0,lty=2,col="red")
 abline(h=c(-50,50),lty=3,col="red")
 badPB <- which(abs(DODGres$pdiffPB)>200)
 with(DODGres[badPB,],text(PB.DO,pdiffPB,wbic_year,pos=4,cex=0.6))
 plot(pdiffPB~PB.DO,data=DODGres,pch=19,col=col2rgbt("black",1/5),
-     ylab="Percent Difference in P/B",xlab="Our P/B",ylim=c(-100,200))
+     ylab="Percent Difference (DG-DO) in P/B",xlab="Our P/B",ylim=c(-100,200))
 grid()
 abline(h=0,lty=2,col="red")
 abline(h=c(-50,50),lty=3,col="red")
 ```
 
 `r figs("PBComp")`
+
+```{r echo=FALSE}
+cat("WBIC_YEARs for which our and Daisuke's B estimates were very different:")
+DODGres[badB,c("wbic_year","B.DO","B.DG","pdiffB")]
+cat("\nWBIC_YEARs for which our and Daisuke's P estimates were very different:")
+DODGres[badP,c("wbic_year","P.DO","P.DG","pdiffP")]
+cat("\nWBIC_YEARs for which our and Daisuke's P/B estimates were very different:")
+DODGres[badPB,c("wbic_year","PB.DO","PB.DG","pdiffPB")]
+WYs_PBIssues <- unique(DODGres$wbic_year[c(badB,badP,badPB)])
+```
+
+
 
 ```{r echo=FALSE, eval=FALSE}
 ## This will print the results tables for WBIC_YEARs considered to be "bad"
@@ -201,57 +296,54 @@ DOres[DOres$wbic_year %in% DODGres[c(badB,badP,badPB),]$wbic_year,]
 ## "Raw" Data Comparison
 ### PEs
 ```{r echo=FALSE, results="hide"}
-# Get PEs and sizes by isolating them from WIwalleye_len_pe.csv
-# Converted size from m^2 to HA, round to 1 decimal to match our results
-# Note ... reduce this to only those WBIC_YEARs for which he computed P
-#          which are in WYs_DG from above.
-DGpeha <- read.csv("zzzOld_FromDaisuke/WIwalleye_len_pe.csv",stringsAsFactors=FALSE) %>%
-  mutate(wbic_year=paste(wbic,year,sep="_"),
-         HA=round(LakeArea/10000,1)) %>%
-  rename(PE=pe) %>%
-  select(wbic_year,wbic,year,PE,HA) %>%
-  unique() %>%
+# Get PEs from DGPEHA ... reduce this to only those WBIC_YEARs for which
+# he computed P (which are in WYs_DG from above.)
+DGPE <- select(DGPEHA,wbic_year,PE) %>%
   filterD(wbic_year %in% WYs_DG)
 # Join our PEs from the results file to Daisuke's and compare
-DODGpe <- inner_join(select(DOres,wbic_year,PE),select(DGpeha,wbic_year,PE),
+DODGpe <- inner_join(select(DOres,wbic_year,PE),DGPE,
                       by="wbic_year",suffix=c(".DO",".DG")) %>%
   mutate(diff=PE.DG-PE.DO,arediff=diff!=0)
 any(DODGpe$arediff)
 ```
 
-The PEs were the same for `r nrow(DODGpe)` WBIC_YEARs in common between our and Daisuke's analysis.
+The PEs were the same for `r nrow(DODGpe)` WBIC_YEARs in common between our and Daisuke's analysis. **Thus, it does not appear that differences in PEs would explain the differences between our's and Daisuke's estimates of P and B.**
 
 ### Lake Size
 ```{r echo=FALSE, results="hide"}
+# Get lake sizes from DGPEHA ... reduce this to only those WBIC_YEARs
+# for which he computed P (which are in WYs_DG from above.) Must send to
+# unique() to remove duplicates within any given WBIC (i.e., mult years).
+DGHA <- filterD(DGPEHA,wbic_year %in% WYs_DG) %>%
+  select(wbic,HA) %>%
+  unique()
+# Get our sizes
+DOHA <- select(DOres,wbic,HA) %>%
+  unique()
 # Join our sizes from the results file to Daisuke's and compare
-DOsize <- unique(select(DOres,wbic,HA))
-DGsize <- unique(select(DGpeha,wbic,HA))
-DODGsize <- inner_join(DOsize,DGsize,by="wbic",suffix=c(".DO",".DG")) %>%
-  mutate(diff=HA.DG-HA.DO,pdiff=diff/HA.DO*100,adjSize_DG2DO=HA.DG/HA.DO,
-         nobigdiff=(adjSize_DG2DO>0.99 & adjSize_DG2DO<1.01))
+DODGsize <- inner_join(DOHA,DGHA,by="wbic",suffix=c(".DO",".DG")) %>%
+  mutate(diff=HA.DG-HA.DO,pdiff=diff/HA.DO*100,ratio=HA.DG/HA.DO,
+         nobigdiff=(ratio>0.99 & ratio<1.01))
 sztab <- xtabs(~nobigdiff,data=DODGsize)
 szsum <- Summarize(~pdiff,data=DODGsize)
 ```
 
-Lake size was exactly the same for `r formatC(szsum["percZero"],format="f",digits=1)`% and within 1% of each other for `r formatC(sztab[["TRUE"]]/sum(sztab)*100,format="f",digits=1)`% of WBICs in common between our and Daisuke's analysis (`r figs("DiffHA",display="cite")`). For what it is worth, our lake sizes for the four large differences in `r figs("DiffHA",display="cite")` match what is available in the [online lake app](http://dnr.wi.gov/lakes/lakepages/Search.aspx?show=search).
+Lake size was exactly the same for `r formatC(szsum[["percZero"]],format="f",digits=1)`% and within 1% of each other for `r formatC(sztab[["TRUE"]]/sum(sztab)*100,format="f",digits=1)`% of the `r sum(sztab)` WBICs in common between our and Daisuke's results (`r figs("DiffHA",display="cite")`). Our lake sizes for the four large differences in `r figs("DiffHA",display="cite")` match what is available in the [online lake app](http://dnr.wi.gov/lakes/lakepages/Search.aspx?show=search). None of the four lage differences in lake sizes matched with any of the problematic P, B, or P/B estimates identified above. **Thus, it does not appear that these differences in lake size data will explain (to any great extent) the differences between our and Daisuke's estimates of P and B.**
 
 ```{r DiffHA, echo=FALSE, results="hide", out.width='.33\\textwidth'}
-Summarize(~diff,data=DODGsize,digits=2)
 par(mar=c(3,3,0.5,0.5),mgp=c(2.1,0.35,0),tcl=-0.2,las=1)
 figs("DiffHA","Daisuke's lake size (LEFT) and the ratio between Daisuke's and our lake sizes (RIGHT) versus lake size in our analysis. WBICs for which the difference was more than 1% are marked.")
 maxHA <- with(DODGsize,max(c(HA.DO,HA.DG)))
 plot(HA.DG~HA.DO,data=DODGsize,pch=19,col=col2rgbt("black",1/5),
-     ylab="Difference in Lake Size (ha)",xlab="Our Lake Size (ha)",
+     ylab="Daisuke's Lake Size (ha)",xlab="Our Lake Size (ha)",
      xlim=c(0,maxHA),ylim=c(0,maxHA))
 grid()
 abline(a=0,b=1,lty=2,col="red")
-plot(adjSize_DG2DO~HA.DO,data=DODGsize,pch=19,col=col2rgbt("black",1/5),
-     ylab="Ratio of Daisuke's to Our Lake Size",xlab="Our Lake Size (ha)")
+plot(ratio~HA.DO,data=DODGsize,pch=19,col=col2rgbt("black",1/5),
+     ylab="Daisuke's / Our Lake Size",xlab="Our Lake Size (ha)")
 grid()
 abline(h=1,lty=2,col="red")
-with(filterD(DODGsize,adjSize_DG2DO<0.985),text(HA.DO,adjSize_DG2DO,
-                                                wbic,pos=c(1,2,3,3),
-                                                cex=0.8))
+with(filterD(DODGsize,ratio<0.985),text(HA.DO,ratio,wbic,pos=c(1,2,3,3),cex=0.8))
 ```
 
 `r figs("DiffHA")`
@@ -259,54 +351,150 @@ with(filterD(DODGsize,adjSize_DG2DO<0.985),text(HA.DO,adjSize_DG2DO,
 
 ## Weight-Length Relationships
 ```{r echo=FALSE, results="hide", warning=FALSE}
-lwDG <- read.csv("zzzOld_FromDaisuke/WIwalleye_len-mass.csv",stringsAsFactors=FALSE) %>%
-  mutate(logw=log(mass),logl=log(length))
-lw_wy_DG <- nlme::lmList(logw~logl|wbic_year,data=lwDG,na.action=na.pass)
-wy_DG_res <- LWINFO(lw_wy_DG,"WBIC_YEAR") %>%
-  select(loga,b,n,rsq,which)
+tmp <- nlme::lmList(logw~logl|wbic_year,data=DGLW,na.action=na.pass)
+DGLWres <- LWINFO(tmp,"WBIC_YEAR") %>% select(loga,b,n,rsq,which)
 
-wy_DO_res <- read.csv("../data/prepped/LWregs.csv",stringsAsFactors=FALSE) %>%
-  filterD(type=="WBIC_YEAR") %>%
-  select(loga,b,n,rsq,which)
-
-wy_DODG <- left_join(wy_DO_res,wy_DG_res,by="which",suffix=c(".DO",".DG")) %>%
+DODGLW <- inner_join(DOLWres,DGLWres,by="which",suffix=c(".DO",".DG")) %>%
   mutate(loga.diff=loga.DG-loga.DO,b.diff=b.DG-b.DO,
          n.diff=n.DG-n.DO,rsq.diff=rsq.DG-rsq.DO,
          loga.nobigdiff=((loga.DG/loga.DO)>0.99 & (loga.DG/loga.DO)<1.01),
          b.nobigdiff=((b.DG/b.DO)>0.99 & (b.DG/b.DO)<1.01),
          n.nobigdiff=((n.DG/n.DO)>0.99 & (n.DG/n.DO)<1.01),
          rsq.nobigdiff=((rsq.DG/rsq.DO)>0.99 & (rsq.DG/rsq.DO)<1.01))
-loga.tab <- xtabs(~loga.nobigdiff,data=wy_DODG)
-loga.sum <- Summarize(~loga.diff,data=wy_DODG)
-b.tab <- xtabs(~b.nobigdiff,data=wy_DODG)
-b.sum <- Summarize(~b.diff,data=wy_DODG)
-n.tab <- xtabs(~n.nobigdiff,data=wy_DODG)
-n.sum <- Summarize(~n.diff,data=wy_DODG)
-rsq.tab <- xtabs(~rsq.nobigdiff,data=wy_DODG)
-rsq.sum <- Summarize(~rsq.diff,data=wy_DODG)
+loga.tab <- xtabs(~loga.nobigdiff,data=DODGLW)
+loga.sum <- Summarize(~loga.diff,data=DODGLW)
+b.tab <- xtabs(~b.nobigdiff,data=DODGLW)
+b.sum <- Summarize(~b.diff,data=DODGLW)
+n.tab <- xtabs(~n.nobigdiff,data=DODGLW)
+n.sum <- Summarize(~n.diff,data=DODGLW)
+rsq.tab <- xtabs(~rsq.nobigdiff,data=DODGLW)
+rsq.sum <- Summarize(~rsq.diff,data=DODGLW)
 ```
 
-Of the `r nrow(wy_DODG)` weight-length relationships shared between our and Daisuke's analyses (restricted to only WBIC_YEAR regressions), `r formatC(loga.tab[["TRUE"]]/sum(loga.tab)*100,format="f",digits=1)`% were within 1% of each other for $log(a)$, `r formatC(b.tab[["TRUE"]]/sum(b.tab)*100,format="f",digits=1)`% were within 1% of each other for $b$, `r formatC(n.tab[["TRUE"]]/sum(n.tab)*100,format="f",digits=1)`% were within 1% of each other for $n$, and `r formatC(rsq.tab[["TRUE"]]/sum(rsq.tab)*100,format="f",digits=1)`% were within 1% of each other for $r^{2}$ (`r figs("DiffWL",display="cite")`). Note that one of the most different regression results were from 2013, which was not used in Daisuke's analysis.
+We do not have access to Daisuke's weight-length relationship results. However, we computed the weight-length relationship for `r nrow(DODGLW)` WBIC_YEARs available in what appears to be his weight-length data (were stricted to only WBIC_YEAR regressions that we considered valid). Of these, `r formatC(loga.tab[["TRUE"]]/sum(loga.tab)*100,format="f",digits=1)`% were within 1% of each other for $log(a)$, `r formatC(b.tab[["TRUE"]]/sum(b.tab)*100,format="f",digits=1)`% were within 1% of each other for $b$, `r formatC(n.tab[["TRUE"]]/sum(n.tab)*100,format="f",digits=1)`% were within 1% of each other for $n$, and `r formatC(rsq.tab[["TRUE"]]/sum(rsq.tab)*100,format="f",digits=1)`% were within 1% of each other for $r^{2}$ (`r figs("DiffWL",display="cite")`). Note that one of the most different regression results was from 2013, which was not used in Daisuke's analysis. None of the most different regression results matched with any of the problematic P, B, or P/B estimates identified above. **Thus, it does not appear that the actual weight-length relationships explain the difference between our and Daisuke's P and B estimates** (this assumes that Daisuke's weight-length relationships are the same as what we calculated here). However, **we could have used the weight-length relationships differently than he did.** For example, we may have used a different decision ladder to decide to use a weight-length regression othr than the one for the specific WBIC_YEAR than Daisuke did (and we had regressions by lake class rather than region as Daisuke did). Or, Daisuke may have used the weight-length relationship to compute mean weight from mean length, rather than predicting weight for individual fish and then computing mean weight-at-age as we did.
 
-```{r DiffWL, echo=FALSE, results="hide", out.width='.33\\textwidth'}
-par(mar=c(3,3,0.5,0.5),mgp=c(2.1,0.35,0),tcl=-0.2,las=1)
+```{r DiffWL, echo=FALSE, results="hide", fig.width=6, fig.height=6, out.width='.7\\textwidth'}
+par(mar=c(3,3,0.5,0.5),mgp=c(2.1,0.35,0),tcl=-0.2,las=1,mfrow=c(2,2))
 figs("DiffWL","Differenes in Daisuke's and our weight-length regression results versus our weight-length regression results for four summary statistics.")
-plot(loga.diff~loga.DO,data=wy_DODG,pch=19,col=col2rgbt("black",1/5),
-     ylab="Difference in log(a)",xlab="Our log(a)")
+plot(loga.diff~loga.DO,data=DODGLW,pch=19,col=col2rgbt("black",1/5),
+     ylab="Daisuke's - Our log(a)",xlab="Our log(a)")
 abline(h=0,lty=2,col="red")
-with(filterD(wy_DODG,abs(loga.diff)>0.05),text(loga.DO,loga.diff,which,pos=2,cex=0.8))
-plot(b.diff~b.DO,data=wy_DODG,pch=19,col=col2rgbt("black",1/5),
-     ylab="Difference in b",xlab="Our b")
+with(filterD(DODGLW,abs(loga.diff)>0.05),text(loga.DO,loga.diff,which,pos=2,cex=0.8))
+plot(b.diff~b.DO,data=DODGLW,pch=19,col=col2rgbt("black",1/5),
+     ylab="Daisuke's - Our b",xlab="Our b")
 abline(h=0,lty=2,col="red")
-with(filterD(wy_DODG,abs(b.diff)> 0.01),text(b.DO,b.diff,which,pos=2,cex=0.8))
-plot(n.diff~n.DO,data=wy_DODG,pch=19,col=col2rgbt("black",1/5),
-     ylab="Difference in n",xlab="Our n")
+with(filterD(DODGLW,abs(b.diff)> 0.01),text(b.DO,b.diff,which,pos=2,cex=0.8))
+plot(n.diff~n.DO,data=DODGLW,pch=19,col=col2rgbt("black",1/5),
+     ylab="Daisuke's - Our n",xlab="Our n")
 abline(h=0,lty=2,col="red")
-with(filterD(wy_DODG,abs(n.diff)>50),text(n.DO,n.diff,which,pos=4,cex=0.8))
-plot(rsq.diff~rsq.DO,data=wy_DODG,pch=19,col=col2rgbt("black",1/5),
-     ylab="Difference in r^2",xlab="Our r^2")
+with(filterD(DODGLW,abs(n.diff)>50),text(n.DO,n.diff,which,pos=4,cex=0.8))
+plot(rsq.diff~rsq.DO,data=DODGLW,pch=19,col=col2rgbt("black",1/5),
+     ylab="Daisuke's - Our r^2",xlab="Our r^2")
 abline(h=0,lty=2,col="red")
-with(filterD(wy_DODG,rsq.diff< -0.002),text(rsq.DO,rsq.diff,which,pos=2,cex=0.8))
+with(filterD(DODGLW,rsq.diff< -0.002),text(rsq.DO,rsq.diff,which,pos=2,cex=0.8))
 ```
 
 `r figs("DiffWL")`
+
+\newpage
+
+## Age-Length Data
+
+
+```{r echo=FALSE, results="hide"}
+sum_DOLAo <- group_by(DOLAo,wbic_year) %>%
+  summarize(n=n(),mnlen=mean(len.mm),mnage=mean(age))
+sum_DGLA <- group_by(DGLA,wbic_year) %>%
+  summarize(n=n(),mnlen=mean(len.mm),mnage=mean(age))
+
+# Joined for which summaries are in both files
+# Reduced to only WBIC_YEARs that we calcd P&B for
+sum_DODGLA <- inner_join(sum_DOLAo,sum_DGLA,by="wbic_year",
+                         suffix=c(".DO",".DG")) %>%
+  filterD(wbic_year %in% WYs_DO) %>%
+  mutate(mnlen.diff=mnlen.DG-mnlen.DO,
+         mnage.diff=mnage.DG-mnage.DO,
+         n.diff=n.DG-n.DO,n.ratio=n.DG/n.DO) %>%
+  as.data.frame()
+Summarize(~mnlen.diff,data=sum_DODGLA,digits=2)
+Summarize(~mnage.diff,data=sum_DODGLA,digits=2)
+Summarize(~n.diff,data=sum_DODGLA,digits=2)
+```
+
+```{r DiffAge, echo=FALSE, results="hide", out.width='.33\\textwidth'}
+par(mar=c(3,3,0.5,0.5),mgp=c(2.1,0.35,0),tcl=-0.2,las=1)
+figs("DiffAge","Differenes in summaries of Daisuke's and our length-age data versus our summaries for three summary statistics.")
+plot(mnlen.diff~mnlen.DO,data=sum_DODGLA,pch=19,col=col2rgbt("black",1/5),
+     ylab="Difference (DG-DO) in Mean Length",xlab="Our Mean Length")
+abline(h=0,lty=2,col="red")
+#with(filterD(sum_DODGLA,abs(mnlen.diff)>10),text(mnlen.DO,mnlen.diff,wbic_year,pos=2,cex=0.8))
+plot(mnage.diff~mnage.DO,data=sum_DODGLA,pch=19,col=col2rgbt("black",1/5),
+     ylab="Difference (DG-DO) in Mean Age",xlab="Our Mean Age")
+abline(h=0,lty=2,col="red")
+#with(filterD(sum_DODGLA,abs(mnage.diff)> 0.3),text(mnage.DO,mnage.diff,wbic_year,pos=2,cex=0.8))
+plot(n.diff~n.DO,data=sum_DODGLA,pch=19,col=col2rgbt("black",1/5),
+     ylab="Difference (DG-DO) in n",xlab="Our n")
+abline(h=0,lty=2,col="red")
+#with(filterD(wy_DODG,abs(n.diff)>50),text(n.DO,n.diff,which,pos=4,cex=0.8))
+```
+
+`r figs("DiffAge")`
+
+```{r echo=FALSE, results="hide"}
+## Explore systematic differences in n
+tmp <- which(sum_DODGLA$n.diff< -20)
+sum_DODGLA[tmp,]
+
+## for printing out the problems
+crap <- sum_DODGLA[tmp,]
+rownames(crap) <- crap$wbic_year
+crap <- round(crap[,c("n.DO","n.DG","n.ratio","mnlen.diff","mnage.diff")],2)
+crap[order(crap$n.ratio),]
+```
+
+
+\newpage
+
+## Length Data in FMDB
+
+```{r echo=FALSE, results='hide'}
+# Get our prepped lengths
+DOLENS <- select(DOFMDBp,wbic_year,len.mm)
+
+# To make Daisuke's lengths more comparable to what we did, delete fish
+# < 7 in (minimum size for age-3) and fish >40 in
+rows2delete <- which(DGLENS$len.mm<(7*25.4) | DGLENS$len.mm>(40*25.4))
+DGLENS <- DGLENS[-rows2delete,]
+
+sum_DOLENS <- group_by(DOLENS,wbic_year) %>%
+  summarize(n=n(),mnlen=mean(len.mm))
+sum_DGLENS <- group_by(DGLENS,wbic_year) %>%
+  summarize(n=n(),mnlen=mean(len.mm))
+
+sum_DODGLENS <- inner_join(sum_DOLENS,sum_DGLENS,by="wbic_year",
+                           suffix=c(".DO",".DG")) %>%
+  mutate(mnlen.diff=mnlen.DG-mnlen.DO,
+         n.diff=n.DG-n.DO,n.ratio=n.DG/n.DO) %>%
+  filterD(wbic_year %in% WYs_DO) %>%
+  as.data.frame()
+```
+
+```{r DiffLens, echo=FALSE, results='hide', out.width='.33\\textwidth'}
+par(mar=c(3,3,0.5,0.5),mgp=c(2.1,0.35,0),tcl=-0.2,las=1)
+figs("DiffLens","Differences in summaries of Daisuke's and our length data versus our summaries for three summary statistics.")
+plot(mnlen.diff~mnlen.DO,data=sum_DODGLENS,pch=19,col=col2rgbt("black",1/5),
+     ylab="Difference (DG-DO) in Mean Length",xlab="Our Mean Length")
+abline(h=0,lty=2,col="red")
+#with(filterD(sum_DODGLENS,abs(mnlen.diff)>10),text(mnlen.DO,mnlen.diff,wbic_year,pos=2,cex=0.8))
+plot(n.diff~n.DO,data=sum_DODGLENS,pch=19,col=col2rgbt("black",1/5),
+     ylab="Difference (DG-DO) in n",xlab="Our n")
+abline(h=0,lty=2,col="red")
+#with(filterD(wy_DODG,abs(n.diff)>50),text(n.DO,n.diff,which,pos=4,cex=0.8))
+plot(n.ratio~n.DO,data=sum_DODGLENS,pch=19,col=col2rgbt("black",1/5),
+     ylab="Ratio (DG/DO) of n",xlab="Our n")
+abline(h=1,lty=2,col="red")
+abline(h=0.5,lty=3,col="blue")
+#with(filterD(wy_DODG,abs(n.diff)>50),text(n.DO,n.diff,which,pos=4,cex=0.8))
+```
+
+`r figs("DiffLens")`
