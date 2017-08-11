@@ -371,7 +371,7 @@ rsq.tab <- xtabs(~rsq.nobigdiff,data=DODGLW)
 rsq.sum <- Summarize(~rsq.diff,data=DODGLW)
 ```
 
-We do not have access to Daisuke's weight-length relationship results. However, we computed the weight-length relationship for `r nrow(DODGLW)` WBIC_YEARs available in what appears to be his weight-length data (were stricted to only WBIC_YEAR regressions that we considered valid). Of these, `r formatC(loga.tab[["TRUE"]]/sum(loga.tab)*100,format="f",digits=1)`% were within 1% of each other for $log(a)$, `r formatC(b.tab[["TRUE"]]/sum(b.tab)*100,format="f",digits=1)`% were within 1% of each other for $b$, `r formatC(n.tab[["TRUE"]]/sum(n.tab)*100,format="f",digits=1)`% were within 1% of each other for $n$, and `r formatC(rsq.tab[["TRUE"]]/sum(rsq.tab)*100,format="f",digits=1)`% were within 1% of each other for $r^{2}$ (`r figs("DiffWL",display="cite")`). Note that one of the most different regression results was from 2013, which was not used in Daisuke's analysis. None of the most different regression results matched with any of the problematic P, B, or P/B estimates identified above. **Thus, it does not appear that the actual weight-length relationships explain the difference between our and Daisuke's P and B estimates** (this assumes that Daisuke's weight-length relationships are the same as what we calculated here). However, **we could have used the weight-length relationships differently than he did.** For example, we may have used a different decision ladder to decide to use a weight-length regression othr than the one for the specific WBIC_YEAR than Daisuke did (and we had regressions by lake class rather than region as Daisuke did). Or, Daisuke may have used the weight-length relationship to compute mean weight from mean length, rather than predicting weight for individual fish and then computing mean weight-at-age as we did.
+We do not have access to Daisuke's weight-length relationship results. However, we computed the weight-length relationship for `r nrow(DODGLW)` WBIC_YEARs available (and matched what we had available) in what appears to be his weight-length data (were restricted to only WBIC_YEAR regressions that we considered valid). Of these, `r formatC(loga.tab[["TRUE"]]/sum(loga.tab)*100,format="f",digits=1)`% were within 1% of each other for $log(a)$, `r formatC(b.tab[["TRUE"]]/sum(b.tab)*100,format="f",digits=1)`% were within 1% of each other for $b$, `r formatC(n.tab[["TRUE"]]/sum(n.tab)*100,format="f",digits=1)`% were within 1% of each other for $n$, and `r formatC(rsq.tab[["TRUE"]]/sum(rsq.tab)*100,format="f",digits=1)`% were within 1% of each other for $r^{2}$ (`r figs("DiffWL",display="cite")`). Note that one of the most different regression results was from 2013, which was not used in Daisuke's analysis. None of the most different regression results matched with any of the problematic P, B, or P/B estimates identified above. **Thus, it does not appear that the actual weight-length relationships explain the difference between our and Daisuke's P and B estimates** (this assumes that Daisuke's weight-length relationships are the same as what we calculated here). However, **we could have used the weight-length relationships differently than he did.** For example, we may have used a different decision ladder to decide to use a weight-length regression other than the one for the specific WBIC_YEAR than Daisuke did (and we had regressions by lake class rather than region as Daisuke did). Or, Daisuke may have used the weight-length relationship to compute mean weight from mean length, rather than predicting weight for individual fish and then computing mean weight-at-age as we did.
 
 ```{r DiffWL, echo=FALSE, results="hide", fig.width=6, fig.height=6, out.width='.7\\textwidth'}
 par(mar=c(3,3,0.5,0.5),mgp=c(2.1,0.35,0),tcl=-0.2,las=1,mfrow=c(2,2))
@@ -400,7 +400,6 @@ with(filterD(DODGLW,rsq.diff< -0.002),text(rsq.DO,rsq.diff,which,pos=2,cex=0.8))
 
 ## Age-Length Data
 
-
 ```{r echo=FALSE, results="hide"}
 sum_DOLAo <- group_by(DOLAo,wbic_year) %>%
   summarize(n=n(),mnlen=mean(len.mm),mnage=mean(age))
@@ -420,6 +419,10 @@ Summarize(~mnlen.diff,data=sum_DODGLA,digits=2)
 Summarize(~mnage.diff,data=sum_DODGLA,digits=2)
 Summarize(~n.diff,data=sum_DODGLA,digits=2)
 ```
+
+We did not have access to the specific age-length keys that Daisuke used. However, we could compute the sample size, mean length, and mean age for fish in the  `r nrow(sum_DODGLA)` WBIC_YEARs available (and matched what we had available) in what appears to be his length-age data. The most striking issue here is related to a series of WBIC_YEARs where our sample size was exactly or very nearly exactly twice as large as Daisuke's sample size. The WBIC_YEARs corresponding to these sample size issues do not seem to correspond to any great extent to mean lengths or mean ages that are very different between our and Daisuke's results. With this observation and an examination of our original data it appears that some of the records for these WBIC_YEARs are duplicated in our original data file. Andrew thinks that this is related to a past database migration issue and is investigating this further.
+
+There appear to be a handful of other discrepancies in these data. However, I won't pursue these further until we address the possible duplication issue.
 
 ```{r DiffAge, echo=FALSE, results="hide", out.width='.33\\textwidth'}
 par(mar=c(3,3,0.5,0.5),mgp=c(2.1,0.35,0),tcl=-0.2,las=1)
@@ -442,20 +445,28 @@ abline(h=0,lty=2,col="red")
 
 ```{r echo=FALSE, results="hide"}
 ## Explore systematic differences in n
-tmp <- which(sum_DODGLA$n.diff< -20)
+tmp <- which(sum_DODGLA$n.ratio==0.5)
 sum_DODGLA[tmp,]
 
 ## for printing out the problems
 crap <- sum_DODGLA[tmp,]
 rownames(crap) <- crap$wbic_year
-crap <- round(crap[,c("n.DO","n.DG","n.ratio","mnlen.diff","mnage.diff")],2)
-crap[order(crap$n.ratio),]
+round(crap[,c("n.DO","n.DG","n.ratio","mnlen.diff","mnage.diff")],2)
+
+tmp <- which(sum_DODGLA$n.ratio==2)
+sum_DODGLA[tmp,]
 ```
 
 
 \newpage
 
 ## Length Data in FMDB
+
+There are MANY differences in the lengths data in our respective versions of "raw data from the FMDB" (this is AFTER our data had been prepped). Note that seven of the WBIC_YEARs had a difference in sample size of more than 5000 individuals! It is possible that I have misinterpreted which of Daisuke's files were his "lengths" (I used "WIwalleye_len_pe.csv").
+
+It is possible that some of the WBIC_YEARs for which our data set are larger is due to data that have been entered into the FMDB since Daisuke's data run in 2012. That is some of the very large differences shown in the figures below have dates in the "FDV_ENT_DATE" field as post-2012. However, these WBIC_YEARs don't have any entries with dates before 2012 (so, not sure why they are in Daisuke's file).
+
+**Assuming that I have chosen the correct file for Daisuke's lengths, this is likely the primary driver for the wide differences in our results.**
 
 ```{r echo=FALSE, results='hide'}
 # Get our prepped lengths
@@ -489,12 +500,43 @@ abline(h=0,lty=2,col="red")
 plot(n.diff~n.DO,data=sum_DODGLENS,pch=19,col=col2rgbt("black",1/5),
      ylab="Difference (DG-DO) in n",xlab="Our n")
 abline(h=0,lty=2,col="red")
-#with(filterD(wy_DODG,abs(n.diff)>50),text(n.DO,n.diff,which,pos=4,cex=0.8))
+with(filterD(sum_DODGLENS,abs(n.diff)>5000),text(n.DO,n.diff,wbic_year,pos=c(2,4,2,2,1,1,1),cex=0.8))
 plot(n.ratio~n.DO,data=sum_DODGLENS,pch=19,col=col2rgbt("black",1/5),
-     ylab="Ratio (DG/DO) of n",xlab="Our n")
+     ylab="Ratio (DG/DO) of n [log scale]",xlab="Our n [log scale]",log="xy",yaxt="n")
+axis(2,c(0.01,0.1,0.5,1,5))
 abline(h=1,lty=2,col="red")
 abline(h=0.5,lty=3,col="blue")
 #with(filterD(wy_DODG,abs(n.diff)>50),text(n.DO,n.diff,which,pos=4,cex=0.8))
 ```
 
 `r figs("DiffLens")`
+
+
+Some examples (haphazardly picked and then filtered in Excel to compare to our results):
+
+- "1001300_1999" has 93 records in our original raw FMDB file with a total of 130 fish (all data entry appeared to be in 2002 ... assumes that the "FDV_ENT_DATE" field is the date of data entry). When this is reduced to fyke nets in the spring there is a total of 70 fish. This matches our results (see below).
+- "1018500_2012" has 370 records in our original raw FMDB file with a total of 1708 fish (all data entry appeared to be in April and October of 2012). When this is reduced to fyke nets in teh spring there is a total of 1227 fish. There were 11 fish under 7 in that we would have removed because the smallest 3-year-old was 7 in. These results match our results (see below).
+- "1596300_1997" has 728 records in our original raw FMDB file with a total of 1320 fish (685 records for 1245 fish were entered in 2006, 43 records with 75 fish were added in 2014). When this is reduced to fyke nets in the spring there is a total of 801 fish. These results match our results (see below).
+- "2295200_1992" has 791 records in our original raw FMDB file with a total of 4083 fish (all records appeared to be entered in 2014). When this is reduced to fyke nets in the spring there is a total of 1191 fish. These results match our results (see below).
+
+```{r echo=FALSE}
+sum_DODGLENS[c(1,10,100,200),]
+```
+
+Is it possible that Daisuke's results were not "expanded" by fish counts to include length measurements (or some approxiation) for when multiple fish were binned??? [*Note how his sample sizes are close to the original record numbers.*]
+
+
+
+## Biggest Questions for Daisuke
+
+1. What "length data" did you use?
+    a. Which file is that?
+    a. Were multiple fish in binned lengths expanded to individual lengths? How?
+    a. What criteria for inclusion/exclusion did you use?
+1. How did you apply the weight-length regressions to ultimately get mean weights at age?
+    a. If you converted mean lengths at age to mean weights at age, how did you get your mean lengths (related to ALK question below ... by assigning ages to individual fish or using the ALK to convert mean lengths in the aged sample to the larger sample)?
+1. How did you apply the age-length keys to get ages?
+    a. Did you assign ages to individual fish or use the ALK to expand the proportions in ages in the aged sample to proportions in the ages in the larger sample (the lengths)?
+1. What criteria did you use to identify which weight-length relationship to use (i.e., WBIC_YEAR, WBIC, region, overall)?
+1. What criteria did you use to identify which ALK to use (i.e., WBIC_YEAR, WBIC, region, overall)?
+1. What criteria did you use to reject a final P and B calculation as being invalid (small n of lengths, small number of ages, gaps in ages, etc.)?
