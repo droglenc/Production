@@ -133,23 +133,29 @@ if (useIndivWeights) {
     # Get minimum length
     minLen[i] <- min(fmdb_1$len.mm)
     # Calculate P and B (if more than one age-class)
-    ## get number and mean weight (kg) in each age-class
+    ## get number and mean, SD and CV weight (g) in each age-class
+    ## correct the mean weight using eqn 16 from Beyer (1991)
+    ## convert mean weights to kg
     ## expand number in sample to number in popn (with PE value)
     ## add a total weight
     ## send to calcPB to compute P and B
     if (numAges[i]>1) {
       sum_1 <- group_by(fmdb_1,age,wbic_year,wbic,year,class) %>%
-        summarize(snum=n(),mlen=mean(len.mm)) %>%
+        summarize(snum=n(),mlen=mean(len.mm),sdlen=sd(len.mm)) %>%
+        mutate(cvlen=sdlen/mlen) %>%
         ungroup() %>% as.data.frame()
       tmp <- doLWReg(sum_1,"mlen","mwt",LWRegs)
-      reg.src[i] <- tmp$reg$which; reg.type[i] <- tmp$reg$type    
+      b <- LWRegs$reg$b     # isolate b coefficient
       sum_1 <- tmp$df %>%
         select(-wbic_year,-wbic,-year,-class) %>%
-        mutate(mwt=mwt/1000) %>%
+        mutate(mwt=mwt*((1+cvlen^2)^(b*(b-1)/2)),
+               mwt=mwt/1000) %>%
         mutate(pnum=snum/sum(snum)*PE[i],twt=pnum*mwt) %>%
         calcPB(age.c="age",num.c="pnum",twt.c="twt",area=HA[i],
                adjAgeGaps=TRUE,lbl=wys[i])
       P[i] <- sum_1$P; B[i] <- sum_1$B
+      # get characteristics of LW used
+      reg.src[i] <- tmp$reg$which; reg.type[i] <- tmp$reg$type
       # get some characteristics of ages present
       minAge[i] <- min(sum_1$df$age); maxAge[i] <- max(sum_1$df$age)
       ## Number of gaps in ages (e.g., 8 and 10, but not no 9)
@@ -169,7 +175,7 @@ if (useIndivWeights) {
       ## How many age-class Ps were negative
       numNegP[i] <- sum(sum_1$df$P<0,na.rm=TRUE)
       ## Write out the calculation table so it can be examined later
-      write.csv(sum_1$df,paste0("results/CalcPB_Tables/PB2",
+      write.csv(sum_1$df,paste0("results/CalcPB_Tables/PB",
                                 ifelse(is.null(results.suffix),"","_"),
                                 results.suffix,
                                 ifelse(is.null(results.suffix),"","_"),
