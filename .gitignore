@@ -10,7 +10,7 @@
 .Rproj.user
 
 # data files
-data/
+data/original/
 scratch/Compare2DaisukeResults_*
 
 scratch/zzzOld_FromDaisuke/

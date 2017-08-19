@@ -1,0 +1,56 @@
+Ran Data Prepper to create new prepped files on Tue Aug 08 20:59:30 2017.
+
+
+Random seed was set to 82340934 .
+
+
+Loaded PE.csv with 3 variables and 1460 records.
+Removing lake chains deleted 20 WBIC_YEAR PE values.
+There are 1440 unique WBIC_YEARS and 384 unique WBICs in PE.csv.
+Saved prepped PE.csv with 4 variables and 1440 records.
+
+
+Loaded ROW file with 64 variables and 143368 records.
+Loaded Rypel's Lake Class List file with 13 variables and 5950 records.
+Saved prepped wbicInfo.csv with 10 variables and 384 records.
+
+
+Loaded length_weight_age file with 27 variables and 218748 records.
+28883 fish had lengths and weights.
+Deleted 0 rows with a length (in) < 1.
+Deleted 0 rows with a weight (g) < 1.
+Saved prepped len_wt.csv with 9 variables and 28883 records.
+
+38674 fish had lengths and ages.
+Deleted 1 rows with age>3 and len.in<5.
+Saved prepped len_age.csv with 10 variables and 38673 records.
+
+
+Loaded walleye FMDB file with 56 variables and 873810 records.
+There were originally 7319 WBIC_YEARs.
+804 WBIC_YEARs remaining after matching with PEs.
+Deleted 117 WBIC_YEARs after reducing to fyke nets in spring.
+  (lost WBIC_YEARs: 198100_2014, 376900_2012, 377900_2012, 377900_2013, 378400_1999, 396500_2015, 491800_1977, 653700_2016, 672900_2016, 683000_1999, 692400_2011, 692400_2013, 692400_2015, 692900_2004, 692900_2013, 716800_1996, 716800_2006, 716800_2012, 716800_2014, 968800_1991, 968800_2006, 995200_2005, 1019500_2016, 1469100_2003, 1542600_1992, 1545300_2013, 1545600_1996, 1545600_2001, 1569600_1999, 1569900_1999, 1579900_2007, 1579900_2016, 1591100_2006, 1596300_1992, 1602300_1991, 1602300_2004, 1602300_2010, 1602300_2012, 1602600_2012, 1630100_1993, 1630100_1999, 1631900_2009, 1631900_2012, 1631900_2016, 1835300_1989, 1880700_2013, 1881900_2012, 1884100_1983, 2081200_1979, 2081200_1989, 2106800_2012, 2267800_1977, 2267800_1978, 2271600_2011, 2275100_1983, 2275300_1983, 2294900_1975, 2295200_1975, 2295200_1989, 2316100_2003, 2316100_2011, 2327500_1999, 2329000_1999, 2329300_1999, 2329400_1999, 2329600_1999, 2329800_1999, 2331600_2003, 2332300_2016, 2332400_2010, 2334300_1999, 2334400_1993, 2334400_1999, 2336100_1993, 2336100_1994, 2336100_1995, 2336100_1996, 2336100_1997, 2336100_1998, 2336100_1999, 2336100_2000, 2336100_2002, 2336100_2003, 2336100_2004, 2336100_2005, 2336100_2006, 2336100_2008, 2336100_2010, 2338300_1999, 2339100_1989, 2339100_1992, 2339900_2013, 2340500_2001, 2392000_1974, 2393200_2012, 2395600_1989, 2395600_2015, 2396800_2012, 2435700_2002, 2692900_1989, 2704200_2002, 2706800_1981, 2732600_1976, 2741600_2016, 2742100_1983, 2858300_1982, 2865000_1986, 2865000_1997, 2897300_2003, 2899400_1989, 2900200_2003, 2916900_2006, 2936200_1993, 2949200_1990, 2949200_2005, 2963200_2013, 2964100_1999)
+Thus, 687 WBIC_YEARs remained after matching with PEs and reducing to fyke nets in spring.
+Deleted 935 rows with fish but no length.
+  (lost WBIC_YEARs: 716800_2016, 1536300_2015, 2271600_2004)
+Deleted 0 rows with lower length > upper length.
+  (no WBIC_YEARs lost)
+Deleted 0 rows with negative lengths.
+  (no WBIC_YEARs lost)
+Deleted 0 rows from the FMDB in a 'small fish' bin.
+  (no WBIC_YEARs lost)
+Results messages from expandCounts():
+7 rows had zero or no counts in FISH_COUNT_AMT.
+  130236 rows had an individual measurement.
+  68816 rows with multiple measurements were expanded to 467222 rows of individual measurements.
+Deleted 1 rows with a len.in >40.
+  (no WBIC_YEARs lost)
+Deleted 3927 rows with a len.in less than the minimum length of age-3 fish (7).
+  (no WBIC_YEARs lost)
+Deleted 7 rows without a len.mm.
+  (lost WBIC_YEARs: 2693700_1988)
+683 WBIC_YEARs after all data prepping.
+Saved prepped fmdb_WAE.csv with 11 variables and 593530 records.
+
+
